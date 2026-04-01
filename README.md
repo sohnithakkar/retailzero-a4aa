@@ -10,6 +10,10 @@
 	- /auth/calendar
 	- /auth/calendar.events.owned
 
+# Google Calendar
+- Make sure you create a new Google Calendar from your Okta Google workspace calendar
+- Navigate to the calendar settings and scroll down, copy the calendar ID. We will need this for the env variables.
+
 # Auth0 Config
 1. Make sure to enable:
 	- CIBA (App Grant Type)
