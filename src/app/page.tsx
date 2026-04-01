@@ -3,7 +3,7 @@ import { Bot, Shield, Lock } from "lucide-react";
 
 export default function LandingPage() {
   return (
-    <main>
+    <div>
       {/* Hero section */}
       <section className="bg-[#191919] text-white py-24 px-4">
         <div className="container mx-auto max-w-3xl text-center">
@@ -66,6 +66,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-    </main>
+    </div>
   );
 }

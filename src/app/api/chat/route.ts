@@ -10,7 +10,7 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import { setAIContext } from "@auth0/ai-vercel";
 import { withInterruptions, errorSerializer } from "@auth0/ai-vercel/interrupts";
 
-import { getRetailTools, setGuestCart, setAuthAccessToken, setAuthRefreshToken } from "@/lib/auth0-ai";
+import { getRetailTools, setGuestCart, setAuthAccessToken, setAuthRefreshToken, setUserTimezone } from "@/lib/auth0-ai";
 import { auth0 } from "@/lib/auth/auth0";
 
 // Allow up to 5 minutes for long-running CIBA approval flows where the
@@ -32,6 +32,7 @@ export async function POST(request: Request) {
     userName,
     userEmail,
     guestCart,
+    userTimezone,
   }: {
     messages: UIMessage[];
     threadId?: string;
@@ -39,11 +40,17 @@ export async function POST(request: Request) {
     userName?: string;
     userEmail?: string;
     guestCart?: { productId: string; quantity: number; addedAt: string }[];
+    userTimezone?: string;
   } = await request.json();
 
   // Seed the in-memory guest cart so AI tools can read/write it
   if (!userId || userId === "guest") {
     setGuestCart(guestCart ?? []);
+  }
+
+  // Store user timezone so calendar tools can use it
+  if (userTimezone) {
+    setUserTimezone(userTimezone);
   }
 
   // Provide Management API access token and refresh token so AI tools can
@@ -110,7 +117,8 @@ export async function POST(request: Request) {
             "REDIRECT TOOLS: " +
             "When a guest user explicitly asks to log in, sign in, create an account, or authenticate, use the redirect_to_login tool. " +
             "When you encounter a Token Vault authorization error for calendar features, use the redirect_to_google_connect tool to send them to connect their Google account. " +
-            "Do NOT provide links for users to click manually — always use the redirect tools to automatically send them to the right page.",
+            "Do NOT provide links for users to click manually — always use the redirect tools to automatically send them to the right page. " +
+            `The user's local timezone is "${userTimezone || "UTC"}". When creating calendar events or interpreting dates/times from the user, always use this timezone.`,
           messages: await convertToModelMessages(messages),
           tools,
           stopWhen: stepCountIs(5),

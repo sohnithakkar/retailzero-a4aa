@@ -61,6 +61,7 @@ function addToGuestCart(productId: string, quantity: number) {
 
 let _authAccessToken: string | null = null;
 let _authRefreshToken: string | null = null;
+let _userTimezone: string | null = null;
 
 export function setAuthAccessToken(token: string) {
   _authAccessToken = token;
@@ -76,6 +77,14 @@ export function setAuthRefreshToken(token: string) {
 
 export function getAuthRefreshToken(): string | null {
   return _authRefreshToken;
+}
+
+export function setUserTimezone(tz: string) {
+  _userTimezone = tz;
+}
+
+export function getUserTimezone(): string | null {
+  return _userTimezone;
 }
 
 // ---------------------------------------------------------------------------
@@ -548,6 +557,7 @@ function getAuthorizedTools(): Record<string, Tool> {
           const endDate = new Date(dropDate);
           endDate.setHours(endDate.getHours() + 1);
           const endDateTime = endDate.toISOString();
+          const timeZone = getUserTimezone() || undefined;
 
           const result = await createCalendarEvent(accessToken, {
             summary: `Product Drop: ${product.name}`,
@@ -555,6 +565,7 @@ function getAuthorizedTools(): Record<string, Tool> {
               notes || `Reminder for ${product.name} drop — $${product.price}`,
             startDateTime,
             endDateTime,
+            timeZone,
           });
 
           return {

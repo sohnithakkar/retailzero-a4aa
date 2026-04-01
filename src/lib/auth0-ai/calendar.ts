@@ -3,6 +3,7 @@ export interface CalendarEventDetails {
   description: string;
   startDateTime: string;
   endDateTime: string;
+  timeZone?: string;
 }
 
 export interface CalendarEventResult {
@@ -35,8 +36,8 @@ export async function createCalendarEvent(
       body: JSON.stringify({
         summary: event.summary,
         description: event.description,
-        start: { dateTime: event.startDateTime },
-        end: { dateTime: event.endDateTime },
+        start: { dateTime: event.startDateTime, ...(event.timeZone && { timeZone: event.timeZone }) },
+        end: { dateTime: event.endDateTime, ...(event.timeZone && { timeZone: event.timeZone }) },
       }),
     }
   );

@@ -1,20 +1,52 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
-import { MessageCircle, X, Send, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { MessageCircle, X, Send, Loader2, ChevronLeft, ChevronRight, Plus, Star, Trash2 } from "lucide-react";
 import { UIMessage } from "ai";
 import { useChat } from "@ai-sdk/react";
 import { useInterruptions } from "@auth0/ai-vercel/react";
 import { useAuth } from "@/lib/auth/provider";
 import { getGuestCart, addGuestCartItem } from "@/lib/cart/guest-cart";
 import { mutate } from "swr";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 const CHAT_STORAGE_KEY = "retailzero-chat";
+
+/** Neutralize redirect tool outputs so restored messages don't re-trigger redirects. */
+function sanitizeRedirectResults(messages: UIMessage[]): UIMessage[] {
+  return messages.map((msg) => {
+    if (msg.role !== "assistant") return msg;
+    return {
+      ...msg,
+      parts: msg.parts.map((part) => {
+        const p = part as any;
+        const toolName = p.type?.startsWith("tool-")
+          ? p.type.substring(5)
+          : p.toolName;
+        if (
+          (toolName === "redirect_to_login" ||
+            toolName === "redirect_to_google_connect") &&
+          p.state === "output-available" &&
+          p.output?.redirect
+        ) {
+          return {
+            ...p,
+            output: { ...p.output, redirect: false, message: "Login completed." },
+          };
+        }
+        return part;
+      }),
+    };
+  });
+}
 
 function loadMessages(): UIMessage[] {
   try {
     const raw = localStorage.getItem(CHAT_STORAGE_KEY);
     const backup = localStorage.getItem(CHAT_STORAGE_KEY + '_backup');
+
+    let parsed: UIMessage[];
 
     // If we have a backup, check if it's more recent or if main is empty
     if (backup) {
@@ -23,23 +55,25 @@ function loadMessages(): UIMessage[] {
         // Main storage is empty, restore from backup
         localStorage.setItem(CHAT_STORAGE_KEY, backup);
         localStorage.removeItem(CHAT_STORAGE_KEY + '_backup');
-        return backupMessages;
+        parsed = backupMessages;
+      } else {
+        const mainMessages = JSON.parse(raw);
+        // If backup has more messages, use it (likely saved during redirect)
+        if (backupMessages.length > mainMessages.length) {
+          localStorage.setItem(CHAT_STORAGE_KEY, backup);
+          localStorage.removeItem(CHAT_STORAGE_KEY + '_backup');
+          parsed = backupMessages;
+        } else {
+          // Main is good, clean up backup
+          localStorage.removeItem(CHAT_STORAGE_KEY + '_backup');
+          parsed = mainMessages;
+        }
       }
-
-      const mainMessages = JSON.parse(raw);
-      // If backup has more messages, use it (likely saved during redirect)
-      if (backupMessages.length > mainMessages.length) {
-        localStorage.setItem(CHAT_STORAGE_KEY, backup);
-        localStorage.removeItem(CHAT_STORAGE_KEY + '_backup');
-        return backupMessages;
-      }
-
-      // Main is good, clean up backup
-      localStorage.removeItem(CHAT_STORAGE_KEY + '_backup');
-      return mainMessages;
+    } else {
+      parsed = raw ? JSON.parse(raw) : [];
     }
 
-    return raw ? JSON.parse(raw) : [];
+    return sanitizeRedirectResults(parsed);
   } catch {
     return [];
   }
@@ -57,91 +91,65 @@ export function clearChatHistory() {
   localStorage.removeItem(CHAT_STORAGE_KEY);
 }
 
-/** Render text with clickable links and markdown formatting. */
-function TextWithLinks({ text }: { text: string }) {
-  // First split by links
-  const linkSplitRegex = /(https?:\/\/[^\s)]+|\/(?:api|connect)\/[^\s)]+)/g;
-  const linkTestRegex = /^(?:https?:\/\/|\/(?:api|connect)\/)/;
-  const parts = text.split(linkSplitRegex);
-
-  return (
-    <>
-      {parts.map((part, i) => {
-        // Handle links
-        if (linkTestRegex.test(part)) {
-          return (
-            <a
-              key={i}
-              href={part}
-              target={part.startsWith("/") ? "_self" : "_blank"}
-              rel="noopener noreferrer"
-              className="underline text-[#B49BFC] hover:text-[#c9b5fd]"
-            >
-              {part}
-            </a>
-          );
-        }
-
-        // Handle markdown formatting in non-link text
-        return <MarkdownText key={i} text={part} />;
-      })}
-    </>
-  );
+/** Ensure markdown table rows are separated by newlines so react-markdown can parse them. */
+function normalizeMarkdownTables(text: string): string {
+  // Only process text that contains a table separator (|---|)
+  if (!/\|[-:]+[-:|\s]*\|/.test(text)) return text;
+  // At row boundaries the text has "| |" (end of row, start of next).
+  // Within a row, pipes are separated by cell content, not just whitespace.
+  return text.replace(/\|\s+\|/g, (match) => {
+    // Preserve the boundary but add a newline
+    return '|\n|';
+  });
 }
 
-/** Parse and render basic markdown formatting (bold, italic, code). */
-function MarkdownText({ text }: { text: string }) {
-  const elements: React.ReactNode[] = [];
-  let remaining = text;
-  let key = 0;
-
-  while (remaining.length > 0) {
-    // Match bold (**text** or __text__)
-    const boldMatch = remaining.match(/^(\*\*|__)(.*?)\1/);
-    if (boldMatch) {
-      elements.push(<strong key={key++}>{boldMatch[2]}</strong>);
-      remaining = remaining.slice(boldMatch[0].length);
-      continue;
-    }
-
-    // Match italic (*text* or _text_)
-    const italicMatch = remaining.match(/^(\*|_)(.*?)\1/);
-    if (italicMatch) {
-      elements.push(<em key={key++}>{italicMatch[2]}</em>);
-      remaining = remaining.slice(italicMatch[0].length);
-      continue;
-    }
-
-    // Match inline code (`text`)
-    const codeMatch = remaining.match(/^`(.*?)`/);
-    if (codeMatch) {
-      elements.push(
-        <code key={key++} className="px-1 py-0.5 bg-muted rounded text-xs font-mono">
-          {codeMatch[1]}
-        </code>
-      );
-      remaining = remaining.slice(codeMatch[0].length);
-      continue;
-    }
-
-    // No match, consume one character
-    const nextSpecial = remaining.search(/[\*_`]/);
-    if (nextSpecial === -1) {
-      // No more special characters, add the rest
-      elements.push(<span key={key++}>{remaining}</span>);
-      break;
-    } else if (nextSpecial > 0) {
-      // Add text before the next special character
-      elements.push(<span key={key++}>{remaining.slice(0, nextSpecial)}</span>);
-      remaining = remaining.slice(nextSpecial);
-    } else {
-      // Special character but no match, consume it as plain text
-      elements.push(<span key={key++}>{remaining[0]}</span>);
-      remaining = remaining.slice(1);
-    }
-  }
-
-  return <>{elements}</>;
+/** Render message text with full markdown support (tables, bold, italic, code, links, lists). */
+function MessageContent({ text }: { text: string }) {
+  const normalized = normalizeMarkdownTables(text);
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        table: ({ children }) => (
+          <table className="my-2 w-full text-xs border-collapse border border-current/10 rounded">
+            {children}
+          </table>
+        ),
+        thead: ({ children }) => (
+          <thead className="bg-muted/50">{children}</thead>
+        ),
+        th: ({ children }) => (
+          <th className="px-2 py-1.5 text-left font-semibold border border-current/10">
+            {children}
+          </th>
+        ),
+        td: ({ children }) => (
+          <td className="px-2 py-1.5 border border-current/10">{children}</td>
+        ),
+        a: ({ href, children }) => (
+          <a
+            href={href}
+            target={href?.startsWith("/") ? "_self" : "_blank"}
+            rel="noopener noreferrer"
+            className="underline text-[#B49BFC] hover:text-[#c9b5fd]"
+          >
+            {children}
+          </a>
+        ),
+        code: ({ children }) => (
+          <code className="px-1 py-0.5 bg-muted rounded text-xs font-mono">
+            {children}
+          </code>
+        ),
+        p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
+        ul: ({ children }) => <ul className="list-disc pl-4 my-1">{children}</ul>,
+        ol: ({ children }) => <ol className="list-decimal pl-4 my-1">{children}</ol>,
+        li: ({ children }) => <li className="mb-0.5">{children}</li>,
+      }}
+    >
+      {normalized}
+    </ReactMarkdown>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -181,6 +189,281 @@ function classifyInterrupt(interrupt: any): InterruptType {
   }
 
   return "unknown";
+}
+
+// ---------------------------------------------------------------------------
+// Extracted components to avoid conditional hook calls inside ToolResultDisplay
+// ---------------------------------------------------------------------------
+
+type Product = {
+  id: string;
+  name: string;
+  price: number;
+  category: string;
+  rating: number;
+  stock?: number;
+  image?: string;
+  description?: string;
+};
+
+function ProductDetailModal({
+  product,
+  onClose,
+  onAddToCart,
+}: {
+  product: Product;
+  onClose: () => void;
+  onAddToCart?: (productId: string) => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-[32rem] max-h-[80vh] rounded-xl border bg-background shadow-2xl overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 z-10 h-7 w-7 rounded-full bg-background/80 border flex items-center justify-center hover:bg-muted"
+        >
+          <X className="h-4 w-4" />
+        </button>
+
+        <div className="flex-1 overflow-y-auto">
+          {product.image ? (
+            <img
+              src={product.image}
+              alt={product.name}
+              className="w-full h-72 object-cover"
+            />
+          ) : (
+            <div className="w-full h-72 bg-muted flex items-center justify-center">
+              <span className="text-muted-foreground text-sm">No image</span>
+            </div>
+          )}
+
+          <div className="p-6 space-y-4">
+            <div>
+              <h3 className="font-semibold text-lg">{product.name}</h3>
+              <span className="inline-block mt-1.5 text-xs px-2 py-0.5 rounded-full border bg-muted">
+                {product.category}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <span className="text-2xl font-bold">${product.price.toFixed(2)}</span>
+              {product.rating > 0 && (
+                <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                  {product.rating}
+                </span>
+              )}
+              {product.stock !== undefined && (
+                <span className="text-xs text-muted-foreground">
+                  {product.stock > 0 ? `${product.stock} in stock` : "Out of stock"}
+                </span>
+              )}
+            </div>
+
+            {product.description && (
+              <div>
+                <h4 className="text-sm font-medium mb-1">Description</h4>
+                <p className="text-sm text-muted-foreground leading-relaxed">{product.description}</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="p-6 pt-0">
+          <button
+            onClick={() => { onAddToCart?.(product.id); onClose(); }}
+            disabled={product.stock === 0 || !onAddToCart}
+            className="w-full py-3 px-4 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {product.stock === 0 ? "Out of Stock" : "Add to Cart"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProductCarousel({
+  products,
+  onAddToCart,
+}: {
+  products: Product[];
+  onAddToCart?: (productId: string) => void;
+}) {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+
+  const checkScroll = () => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    setCanScrollLeft(container.scrollLeft > 0);
+    setCanScrollRight(
+      container.scrollLeft < container.scrollWidth - container.clientWidth - 1
+    );
+  };
+
+  useEffect(() => {
+    checkScroll();
+    const container = scrollContainerRef.current;
+    if (container) {
+      container.addEventListener('scroll', checkScroll);
+      return () => container.removeEventListener('scroll', checkScroll);
+    }
+  }, []);
+
+  const scroll = (direction: 'left' | 'right') => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const scrollAmount = 140;
+    const newScrollLeft = direction === 'left'
+      ? container.scrollLeft - scrollAmount
+      : container.scrollLeft + scrollAmount;
+
+    container.scrollTo({
+      left: newScrollLeft,
+      behavior: 'smooth'
+    });
+  };
+
+  return (
+    <>
+      <div className="mt-2 -mx-1 relative group">
+        {canScrollLeft && (
+          <button
+            onClick={() => scroll('left')}
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-6 w-6 rounded-full bg-background/90 border shadow-md flex items-center justify-center hover:bg-background opacity-0 group-hover:opacity-100 transition-opacity"
+            aria-label="Scroll left"
+          >
+            <ChevronLeft className="h-3 w-3" />
+          </button>
+        )}
+
+        {canScrollRight && (
+          <button
+            onClick={() => scroll('right')}
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-6 w-6 rounded-full bg-background/90 border shadow-md flex items-center justify-center hover:bg-background opacity-0 group-hover:opacity-100 transition-opacity"
+            aria-label="Scroll right"
+          >
+            <ChevronRight className="h-3 w-3" />
+          </button>
+        )}
+
+        <div
+          ref={scrollContainerRef}
+          className="flex gap-1.5 overflow-x-auto pb-1 px-1 scrollbar-thin"
+        >
+          {products.map((p) => (
+            <div
+              key={p.id}
+              className="flex-shrink-0 w-28 rounded-md border bg-card shadow-sm overflow-hidden cursor-pointer hover:ring-1 hover:ring-primary/40 transition-shadow"
+              onClick={() => setSelectedProduct(p)}
+            >
+              <div className="h-20 bg-muted flex items-center justify-center">
+                {p.image ? (
+                  <img
+                    src={p.image}
+                    alt={p.name}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span className="text-muted-foreground text-[9px]">No image</span>
+                )}
+              </div>
+
+              <div className="p-1.5">
+                <h4 className="font-medium text-[10px] leading-tight line-clamp-1">{p.name}</h4>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-[11px] font-bold">${p.price.toFixed(2)}</span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onAddToCart?.(p.id); }}
+                    disabled={p.stock === 0 || !onAddToCart}
+                    className="h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    aria-label={`Add ${p.name} to cart`}
+                  >
+                    <Plus className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {selectedProduct && (
+        <ProductDetailModal
+          product={selectedProduct}
+          onClose={() => setSelectedProduct(null)}
+          onAddToCart={onAddToCart}
+        />
+      )}
+    </>
+  );
+}
+
+function RedirectHandler({ output }: { output: any }) {
+  const [popupOpened, setPopupOpened] = useState(false);
+
+  useEffect(() => {
+    if (output.redirect && output.url && !popupOpened) {
+      setPopupOpened(true);
+
+      if (output.popup) {
+        const width = 600;
+        const height = 700;
+        const left = window.screen.width / 2 - width / 2;
+        const top = window.screen.height / 2 - height / 2;
+        const popup = window.open(
+          output.url,
+          'google-oauth',
+          `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+        );
+
+        if (popup) {
+          const handleMessage = (event: MessageEvent) => {
+            if (event.data?.type === 'oauth-success') {
+              popup.close();
+              window.removeEventListener('message', handleMessage);
+              mutate('/api/auth/me');
+              window.dispatchEvent(new Event('auth-updated'));
+            }
+          };
+          window.addEventListener('message', handleMessage);
+
+          const checkClosed = setInterval(() => {
+            if (popup.closed) {
+              clearInterval(checkClosed);
+              window.removeEventListener('message', handleMessage);
+            }
+          }, 500);
+        } else {
+          setTimeout(() => {
+            window.location.href = output.url;
+          }, 1000);
+        }
+      } else {
+        setTimeout(() => {
+          window.location.href = output.url;
+        }, 1000);
+      }
+    }
+  }, [output, popupOpened]);
+
+  return (
+    <div className="mt-1 text-xs">
+      <p className="text-muted-foreground">{output.message || "Redirecting..."}</p>
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -229,207 +512,16 @@ function ToolResultDisplay({
   }
 
   if (toolName === "show_products") {
-    const products = output as {
-      id: string;
-      name: string;
-      price: number;
-      category: string;
-      rating: number;
-      stock?: number;
-      image?: string;
-      description?: string;
-    }[];
+    const products = output as Product[];
     if (!products?.length) {
       return <p className="text-xs text-muted-foreground mt-1">No products found.</p>;
     }
 
-    const scrollContainerRef = useRef<HTMLDivElement>(null);
-    const [canScrollLeft, setCanScrollLeft] = useState(false);
-    const [canScrollRight, setCanScrollRight] = useState(true);
-
-    const checkScroll = () => {
-      const container = scrollContainerRef.current;
-      if (!container) return;
-
-      setCanScrollLeft(container.scrollLeft > 0);
-      setCanScrollRight(
-        container.scrollLeft < container.scrollWidth - container.clientWidth - 1
-      );
-    };
-
-    useEffect(() => {
-      checkScroll();
-      const container = scrollContainerRef.current;
-      if (container) {
-        container.addEventListener('scroll', checkScroll);
-        return () => container.removeEventListener('scroll', checkScroll);
-      }
-    }, []);
-
-    const scroll = (direction: 'left' | 'right') => {
-      const container = scrollContainerRef.current;
-      if (!container) return;
-
-      const scrollAmount = 200; // Scroll by ~1 card width
-      const newScrollLeft = direction === 'left'
-        ? container.scrollLeft - scrollAmount
-        : container.scrollLeft + scrollAmount;
-
-      container.scrollTo({
-        left: newScrollLeft,
-        behavior: 'smooth'
-      });
-    };
-
-    return (
-      <div className="mt-2 -mx-1 relative group">
-        {/* Left Arrow */}
-        {canScrollLeft && (
-          <button
-            onClick={() => scroll('left')}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-background/90 border shadow-md flex items-center justify-center hover:bg-background opacity-0 group-hover:opacity-100 transition-opacity"
-            aria-label="Scroll left"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-        )}
-
-        {/* Right Arrow */}
-        {canScrollRight && (
-          <button
-            onClick={() => scroll('right')}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-background/90 border shadow-md flex items-center justify-center hover:bg-background opacity-0 group-hover:opacity-100 transition-opacity"
-            aria-label="Scroll right"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        )}
-
-        <div
-          ref={scrollContainerRef}
-          className="flex gap-2 overflow-x-auto pb-2 px-1 scrollbar-thin"
-        >
-          {products.map((p) => (
-            <div
-              key={p.id}
-              className="flex-shrink-0 w-48 rounded-lg border bg-card shadow-sm overflow-hidden"
-            >
-              {/* Product Image */}
-              <div className="aspect-square bg-muted flex items-center justify-center">
-                {p.image ? (
-                  <img
-                    src={p.image}
-                    alt={p.name}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <span className="text-muted-foreground text-xs">No image</span>
-                )}
-              </div>
-
-              {/* Product Info */}
-              <div className="p-3 space-y-2">
-                <div>
-                  <h4 className="font-semibold text-xs line-clamp-2">{p.name}</h4>
-                  <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded-full border bg-muted">
-                    {p.category}
-                  </span>
-                </div>
-
-                {p.description && (
-                  <p className="text-[10px] text-muted-foreground line-clamp-2">
-                    {p.description}
-                  </p>
-                )}
-
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold">${p.price.toFixed(2)}</span>
-                  {p.stock !== undefined && (
-                    <span className="text-[10px] text-muted-foreground">
-                      {p.stock > 0 ? `${p.stock} left` : "Out of stock"}
-                    </span>
-                  )}
-                </div>
-
-                {/* Add to Cart Button */}
-                <button
-                  onClick={() => onAddToCart?.(p.id)}
-                  disabled={p.stock === 0 || !onAddToCart}
-                  className="w-full py-1.5 px-2 text-[10px] font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {p.stock === 0 ? "Out of Stock" : "Add to Cart"}
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
+    return <ProductCarousel products={products} onAddToCart={onAddToCart} />;
   }
 
   if (toolName === "redirect_to_login" || toolName === "redirect_to_google_connect") {
-    const [popupOpened, setPopupOpened] = useState(false);
-
-    useEffect(() => {
-      if (output.redirect && output.url && !popupOpened) {
-        setPopupOpened(true);
-
-        // Open in popup if specified
-        if (output.popup) {
-          const width = 600;
-          const height = 700;
-          const left = window.screen.width / 2 - width / 2;
-          const top = window.screen.height / 2 - height / 2;
-          const popup = window.open(
-            output.url,
-            'google-oauth',
-            `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
-          );
-
-          if (popup) {
-            // Listen for OAuth completion message from popup
-            const handleMessage = (event: MessageEvent) => {
-              if (event.data?.type === 'oauth-success') {
-                popup.close();
-                window.removeEventListener('message', handleMessage);
-
-                // Refresh auth state without page reload
-                // This triggers SWR to re-fetch user data
-                mutate('/api/auth/me');
-
-                // Dispatch event to notify other components
-                window.dispatchEvent(new Event('auth-updated'));
-              }
-            };
-            window.addEventListener('message', handleMessage);
-
-            // Check if popup was closed manually
-            const checkClosed = setInterval(() => {
-              if (popup.closed) {
-                clearInterval(checkClosed);
-                window.removeEventListener('message', handleMessage);
-              }
-            }, 500);
-          } else {
-            // Popup blocked, fall back to redirect
-            setTimeout(() => {
-              window.location.href = output.url;
-            }, 1000);
-          }
-        } else {
-          // Full page redirect
-          setTimeout(() => {
-            window.location.href = output.url;
-          }, 1000);
-        }
-      }
-    }, [output, popupOpened]);
-
-    return (
-      <div className="mt-1 text-xs">
-        <p className="text-muted-foreground">{output.message || "Redirecting..."}</p>
-      </div>
-    );
+    return <RedirectHandler output={output} />;
   }
 
   if (toolName === "get_product_details") {
@@ -459,7 +551,7 @@ function ToolResultDisplay({
 // (useChat, useInterruptions, SWR auth fetch) don't block the toggle button.
 // ---------------------------------------------------------------------------
 
-function ChatPanel({ onClose }: { onClose: () => void }) {
+function ChatPanel({ onClose, onClear }: { onClose: () => void; onClear: () => void }) {
   const { user } = useAuth();
   const [input, setInput] = useState("");
 
@@ -482,6 +574,7 @@ function ChatPanel({ onClose }: { onClose: () => void }) {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const syncedToolCalls = useRef<Set<string>>(new Set());
+  const savedRedirectCalls = useRef<Set<string>>(new Set());
   const isLoading = status === "streaming" || status === "submitted";
 
   // Persist messages whenever they change and we're not mid-stream
@@ -491,28 +584,29 @@ function ChatPanel({ onClose }: { onClose: () => void }) {
     }
   }, [messages, status]);
 
-  // Force-save messages when redirect tools are detected (even if streaming)
+  // Force-save messages when redirect tools are detected (even if streaming).
+  // Guard with savedRedirectCalls so restored (sanitized) messages don't re-trigger.
   useEffect(() => {
     for (const msg of messages) {
       if (msg.role !== "assistant") continue;
       for (const part of msg.parts) {
         const p = part as any;
-        if (!("toolName" in p)) continue;
+        if (!("toolName" in p) || !p.toolCallId) continue;
         const toolName: string = p.toolName ?? "";
 
-        // If a redirect tool is called, immediately save messages
         if (
-          toolName === "redirect_to_login" ||
-          toolName === "redirect_to_google_connect"
+          (toolName === "redirect_to_login" ||
+            toolName === "redirect_to_google_connect") &&
+          p.state === "output-available" &&
+          p.output?.redirect &&
+          !savedRedirectCalls.current.has(p.toolCallId)
         ) {
-          if (p.state === "output-available" && p.output?.redirect) {
-            saveMessages(messages);
-            // Also create a backup
-            try {
-              localStorage.setItem(CHAT_STORAGE_KEY + '_backup', JSON.stringify(messages));
-            } catch {
-              // storage full or unavailable
-            }
+          savedRedirectCalls.current.add(p.toolCallId);
+          saveMessages(messages);
+          try {
+            localStorage.setItem(CHAT_STORAGE_KEY + '_backup', JSON.stringify(messages));
+          } catch {
+            // storage full or unavailable
           }
         }
       }
@@ -551,10 +645,6 @@ function ChatPanel({ onClose }: { onClose: () => void }) {
     }
   }, [messages, status, user?.id]);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!input.trim() || isLoading) return;
@@ -565,6 +655,7 @@ function ChatPanel({ onClose }: { onClose: () => void }) {
       userId: user?.id,
       userName: user?.name,
       userEmail: user?.email,
+      userTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     };
     if (!user?.id) {
       body.guestCart = getGuestCart();
@@ -579,6 +670,7 @@ function ChatPanel({ onClose }: { onClose: () => void }) {
       userId: user?.id,
       userName: user?.name,
       userEmail: user?.email,
+      userTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     };
     if (!user?.id) {
       body.guestCart = getGuestCart();
@@ -602,6 +694,15 @@ function ChatPanel({ onClose }: { onClose: () => void }) {
               {user?.id ? user.name || 'Authenticated' : 'Guest'}
             </span>
           </div>
+          {!user?.id && messages.length > 0 && (
+            <button
+              onClick={onClear}
+              className="text-muted-foreground hover:text-foreground"
+              title="Clear chat"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
           <button
             onClick={onClose}
             className="text-muted-foreground hover:text-foreground"
@@ -611,7 +712,8 @@ function ChatPanel({ onClose }: { onClose: () => void }) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4">
+      <div className="flex-1 flex flex-col-reverse overflow-y-auto px-6 py-6">
+       <div className="space-y-4">
         {messages.length === 0 && (
           <p className="text-sm text-muted-foreground text-center mt-8">
             Hi! How can I help you today?
@@ -635,7 +737,7 @@ function ChatPanel({ onClose }: { onClose: () => void }) {
                 {/* Render text parts first */}
                 {msg.parts.map((part, i) => {
                   if (part.type === "text") {
-                    return <TextWithLinks key={`text-${i}`} text={part.text} />;
+                    return <MessageContent key={`text-${i}`} text={part.text} />;
                   }
                   return null;
                 })}
@@ -804,6 +906,7 @@ function ChatPanel({ onClose }: { onClose: () => void }) {
         )}
 
         <div ref={messagesEndRef} />
+       </div>
       </div>
 
       <div className="px-6 py-5 border-t">
@@ -835,6 +938,13 @@ function ChatPanel({ onClose }: { onClose: () => void }) {
 
 export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
+  const [chatKey, setChatKey] = useState(0);
+
+  const handleClear = useCallback(() => {
+    clearChatHistory();
+    // Bump key to remount ChatPanel with a fresh useChat / useInterruptions state
+    setChatKey((k) => k + 1);
+  }, []);
 
   return (
     <>
@@ -849,7 +959,7 @@ export function ChatWidget() {
         )}
       </button>
 
-      {isOpen && <ChatPanel onClose={() => setIsOpen(false)} />}
+      {isOpen && <ChatPanel key={chatKey} onClose={() => setIsOpen(false)} onClear={handleClear} />}
     </>
   );
 }

@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      body {
+        background-color: white; /* Ensure the iframe has a white background */
+      }
+    </style>
+  </head>
+  <body>
+    <!doctype html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>MCP Architecture Diagram</title>
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+
+          body {
+            background: #fffefa;
+            color: #191919;
+            font-family:
+              -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 40px;
+          }
+
+          .diagram {
+            position: relative;
+            width: 1200px;
+            height: 920px;
+          }
+
+          .box {
+            position: absolute;
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+          }
+
+          .box-title {
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+          }
+
+          .box-subtitle {
+            font-size: 12px;
+            font-weight: 400;
+            opacity: 0.8;
+            line-height: 1.4;
+          }
+
+          .box-items {
+            text-align: left;
+            margin-top: 12px;
+            font-size: 13px;
+            line-height: 1.8;
+            opacity: 0.9;
+          }
+
+          .box-items span {
+            display: block;
+          }
+
+          /* Consumer - Sky */
+          .consumer {
+            top: 20px;
+            left: 0;
+            width: 200px;
+            height: 100px;
+            background: #3f59e4;
+            color: #fffefa;
+          }
+
+          .consumer .icon {
+            font-size: 28px;
+            margin-bottom: 8px;
+          }
+
+          /* AI Agent - Eggplant */
+          .agent {
+            top: 20px;
+            left: 340px;
+            width: 240px;
+            height: 100px;
+            background: #4016a0;
+            color: #fffefa;
+          }
+
+          .agent .icon {
+            font-size: 28px;
+            margin-bottom: 8px;
+          }
+
+          /* Auth0 - Tangerine */
+          .auth0 {
+            top: 20px;
+            right: 0;
+            width: 280px;
+            height: 100px;
+            background: #e27133;
+            color: #fffefa;
+            box-shadow: 0 4px 24px rgba(226, 113, 51, 0.25);
+          }
+
+          .auth0 .box-title {
+            font-size: 18px;
+          }
+
+          /* MCP Server - Seafoam */
+          .mcp {
+            top: 300px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 320px;
+            height: 110px;
+            background: #4cb7a3;
+            color: #fffefa;
+            box-shadow: 0 4px 24px rgba(76, 183, 163, 0.25);
+          }
+
+          /* Internal APIs - Carbon */
+          .internal {
+            bottom: 0;
+            left: 40px;
+            width: 320px;
+            height: 180px;
+            background: #191919;
+            color: #fffefa;
+          }
+
+          /* Third Party - Lilac */
+          .thirdparty {
+            bottom: 0;
+            right: 40px;
+            width: 320px;
+            height: 180px;
+            background: #b49bfc;
+            color: #191919;
+          }
+
+          /* Connection lines using SVG */
+          .connections {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+          }
+
+          .connections line,
+          .connections path {
+            stroke-width: 2.5;
+            fill: none;
+          }
+
+          .line-standard {
+            stroke: #191919;
+            stroke-dasharray: 6, 4;
+          }
+
+          .line-auth0 {
+            stroke: #e27133;
+            stroke-dasharray: 6, 4;
+          }
+
+          .line-token-exchange {
+            stroke: #3f59e4;
+            stroke-dasharray: 6, 4;
+          }
+
+          .line-token-vault {
+            stroke: #b49bfc;
+            stroke-dasharray: 6, 4;
+          }
+
+          .line-oauth {
+            stroke: #4cb7a3;
+            stroke-dasharray: 6, 4;
+          }
+
+          /* Labels on connections */
+          .label {
+            position: absolute;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 5px 12px;
+            border-radius: 8px;
+            white-space: nowrap;
+          }
+
+          .label-oauth {
+            top: 200px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(76, 183, 163, 0.12);
+            color: #4cb7a3;
+            border: 1px solid rgba(76, 183, 163, 0.3);
+          }
+
+          .label-dcr {
+            top: 160px;
+            right: 160px;
+            background: rgba(226, 113, 51, 0.12);
+            color: #e27133;
+            border: 1px solid rgba(226, 113, 51, 0.3);
+          }
+
+          .label-consumer {
+            top: 35px;
+            left: 210px;
+            background: rgba(25, 25, 25, 0.06);
+            color: #191919;
+            border: 1px solid rgba(25, 25, 25, 0.15);
+          }
+
+          .label-exchange {
+            top: 480px;
+            left: 10px;
+            background: rgba(63, 89, 228, 0.1);
+            color: #3f59e4;
+            border: 1px solid rgba(63, 89, 228, 0.3);
+          }
+
+          .label-vault {
+            top: 480px;
+            right: -20px;
+            background: rgba(180, 155, 252, 0.15);
+            color: #4016a0;
+            border: 1px solid rgba(180, 155, 252, 0.4);
+          }
+
+          /* Arrow markers */
+          .arrow-standard {
+            fill: #191919;
+          }
+          .arrow-auth0 {
+            fill: #e27133;
+          }
+          .arrow-oauth {
+            fill: #4cb7a3;
+          }
+          .arrow-exchange {
+            fill: #3f59e4;
+          }
+          .arrow-vault {
+            fill: #b49bfc;
+          }
+
+          /* Legend */
+          .legend {
+            position: absolute;
+            bottom: 300px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 24px;
+            background: #f6f1e7;
+            padding: 14px 28px;
+            border-radius: 12px;
+            border: 1px solid rgba(25, 25, 25, 0.08);
+          }
+
+          .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            color: #191919;
+            opacity: 0.8;
+          }
+
+          .legend-line {
+            width: 24px;
+            height: 3px;
+            border-radius: 2px;
+          }
+
+          .legend-line-auth0 {
+            background: #e27133;
+          }
+          .legend-line-oauth {
+            background: #4cb7a3;
+          }
+          .legend-line-exchange {
+            background: #3f59e4;
+          }
+          .legend-line-vault {
+            background: #b49bfc;
+          }
+          .legend-line-standard {
+            background: #191919;
+          }
+
+          /* Title */
+          .diagram-title {
+            position: absolute;
+            top: -45px;
+            left: 0;
+            font-size: 13px;
+            font-weight: 700;
+            color: #191919;
+            opacity: 0.4;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="diagram">
+          <div class="diagram-title">Securing Agentic Commerce with Auth0</div>
+
+          <!-- SVG Connections -->
+          <svg class="connections" viewBox="0 0 1200 920">
+            <defs>
+              <marker
+                id="arrow-std"
+                markerWidth="8"
+                markerHeight="6"
+                refX="8"
+                refY="3"
+                orient="auto"
+              >
+                <polygon points="0 0, 8 3, 0 6" class="arrow-standard" />
+              </marker>
+              <marker
+                id="arrow-auth"
+                markerWidth="8"
+                markerHeight="6"
+                refX="8"
+                refY="3"
+                orient="auto"
+              >
+                <polygon points="0 0, 8 3, 0 6" class="arrow-auth0" />
+              </marker>
+              <marker
+                id="arrow-oauth"
+                markerWidth="8"
+                markerHeight="6"
+                refX="8"
+                refY="3"
+                orient="auto"
+              >
+                <polygon points="0 0, 8 3, 0 6" class="arrow-oauth" />
+              </marker>
+              <marker
+                id="arrow-ex"
+                markerWidth="8"
+                markerHeight="6"
+                refX="8"
+                refY="3"
+                orient="auto"
+              >
+                <polygon points="0 0, 8 3, 0 6" class="arrow-exchange" />
+              </marker>
+              <marker
+                id="arrow-vlt"
+                markerWidth="8"
+                markerHeight="6"
+                refX="8"
+                refY="3"
+                orient="auto"
+              >
+                <polygon points="0 0, 8 3, 0 6" class="arrow-vault" />
+              </marker>
+            </defs>
+
+            <!-- Consumer to Agent -->
+            <line
+              x1="200"
+              y1="70"
+              x2="330"
+              y2="70"
+              class="line-standard"
+              marker-end="url(#arrow-std)"
+            />
+
+            <!-- Agent to Auth0 (DCR + Auth) -->
+            <line
+              x1="580"
+              y1="50"
+              x2="910"
+              y2="50"
+              class="line-auth0"
+              marker-end="url(#arrow-auth)"
+            />
+            <line
+              x1="910"
+              y1="90"
+              x2="580"
+              y2="90"
+              class="line-auth0"
+              marker-end="url(#arrow-auth)"
+            />
+
+            <!-- Agent to MCP Server (OAuth 2.1 token) -->
+            <path
+              d="M 460 120 L 460 170 Q 460 210 490 230 L 560 290"
+              class="line-oauth"
+              marker-end="url(#arrow-oauth)"
+            />
+
+            <!-- Auth0 to MCP Server -->
+            <path
+              d="M 1050 120 L 1050 260 Q 1050 290 1020 300 L 760 350"
+              class="line-auth0"
+              marker-end="url(#arrow-auth)"
+            />
+
+            <!-- MCP to Internal APIs -->
+            <path
+              d="M 500 410 L 220 485 Q 200 490 200 520 L 200 740"
+              class="line-token-exchange"
+              marker-end="url(#arrow-ex)"
+            />
+
+            <!-- MCP to Third Party -->
+            <path
+              d="M 700 410 L 980 485 Q 1000 490 1000 520 L 1000 740"
+              class="line-token-vault"
+              marker-end="url(#arrow-vlt)"
+            />
+          </svg>
+
+          <!-- Labels -->
+          <div class="label label-consumer">User Request</div>
+          <div class="label label-dcr">
+            Client Registration + Token Issuance
+          </div>
+          <div class="label label-oauth">OAuth 2.1 Access Token + PKCE</div>
+          <div class="label label-exchange">Token Exchange (RFC 8693)</div>
+          <div class="label label-vault">
+            Token Vault (per-user credentials)
+          </div>
+
+          <!-- Legend -->
+          <div class="legend">
+            <div class="legend-item">
+              <div class="legend-line legend-line-standard"></div>
+              User Request
+            </div>
+            <div class="legend-item">
+              <div class="legend-line legend-line-auth0"></div>
+              Auth0 (Registration + Tokens)
+            </div>
+            <div class="legend-item">
+              <div class="legend-line legend-line-oauth"></div>
+              OAuth 2.1 (MCP Access)
+            </div>
+            <div class="legend-item">
+              <div class="legend-line legend-line-exchange"></div>
+              Token Exchange (Internal)
+            </div>
+            <div class="legend-item">
+              <div class="legend-line legend-line-vault"></div>
+              Token Vault (Third-Party)
+            </div>
+          </div>
+
+          <!-- Boxes -->
+          <div class="box consumer">
+            <div class="icon">👤</div>
+            <div class="box-title">Consumer</div>
+          </div>
+
+          <div class="box agent">
+            <div class="icon">🤖</div>
+            <div class="box-title">AI Agent</div>
+            <div class="box-subtitle">ChatGPT, Claude, Perplexity, etc.</div>
+          </div>
+
+          <div class="box auth0">
+            <div class="box-title">Auth0</div>
+            <div class="box-subtitle">
+              Static or Dynamic Client Registration<br />OAuth 2.1 Authorization
+              Server
+            </div>
+          </div>
+
+          <div class="box mcp">
+            <div class="box-title">MCP Server</div>
+            <div class="box-subtitle">
+              Token validation, scope enforcement,<br />tool discovery and
+              execution
+            </div>
+          </div>
+
+          <div class="box internal">
+            <div class="box-title">Internal APIs</div>
+            <div class="box-items">
+              <span>📦 Order Management</span>
+              <span>📊 Inventory</span>
+              <span>💰 Pricing Engine</span>
+              <span>👤 Customer Accounts</span>
+            </div>
+          </div>
+
+          <div class="box thirdparty">
+            <div class="box-title">Third-Party Services</div>
+            <div class="box-items">
+              <span>📅 Google Calendar</span>
+              <span>🎁 Loyalty Programs</span>
+              <span>🔗 Connected Accounts</span>
+              <span>💳 Linked Payment Methods</span>
+            </div>
+          </div>
+        </div>
+      </body>
+    </html>
+
+    <script></script>
+  </body>
+</html>
