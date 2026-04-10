@@ -226,7 +226,7 @@ export function ProfileForm({ initialData, onSave }: ProfileFormProps) {
               />
             </svg>
             <div>
-              <p className="text-sm font-medium">Google Calendar</p>
+              <p className="text-sm font-medium">Google</p>
               {googleLoading ? (
                 <p className="text-xs text-muted-foreground">Checking...</p>
               ) : googleStatus?.connected ? (

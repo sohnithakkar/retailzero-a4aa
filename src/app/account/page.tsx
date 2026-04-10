@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ProfileForm } from "@/components/account/profile-form";
+import { TokenViewer } from "@/components/account/token-viewer";
 
 interface UserData {
   id: string;
@@ -53,6 +54,7 @@ export default function AccountPage() {
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">My Account</h1>
       <ProfileForm initialData={user} onSave={handleSave} />
+      <TokenViewer />
     </div>
   );
 }
