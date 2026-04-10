@@ -313,14 +313,13 @@ const redirectToLoginTool = tool({
 const redirectToGoogleConnectTool = tool({
   description:
     "Redirect the user to connect their Google account. Use this when Token Vault authorization is required for Google Calendar features. " +
-    "Opens Google OAuth in a popup window to maintain chat context. After connecting, the conversation continues seamlessly.",
+    "Redirects the user to the Google OAuth consent page. After connecting, they return to the store.",
   inputSchema: z.object({}),
   execute: async () => {
     return {
       redirect: true,
-      popup: true,
       url: "/connect/google",
-      message: "Opening Google authorization...",
+      message: "Redirecting to connect your Google account...",
     };
   },
 });
@@ -514,10 +513,23 @@ function getAuthorizedTools(): Record<string, Tool> {
 
   // -- Token Vault: Google Calendar reminder --
   try {
+    const currentRefreshToken = getAuthRefreshToken();
+    console.log("[token-vault] setting up withTokenVault", {
+      connection: "google-oauth2",
+      hasRefreshToken: !!currentRefreshToken,
+      refreshTokenLength: currentRefreshToken?.length,
+    });
     const protect = auth0AI.withTokenVault({
       connection: "google-oauth2",
       scopes: ["https://www.googleapis.com/auth/calendar.events"],
-      refreshToken: () => getAuthRefreshToken() ?? undefined,
+      refreshToken: () => {
+        const rt = getAuthRefreshToken();
+        console.log("[token-vault] refreshToken callback invoked", {
+          hasToken: !!rt,
+          length: rt?.length,
+        });
+        return rt ?? undefined;
+      },
     });
     tools.set_calendar_reminder = protect(
       tool({
@@ -549,37 +561,60 @@ function getAuthorizedTools(): Record<string, Tool> {
           dropDate: string;
           notes?: string;
         }) => {
-          const accessToken = getAccessTokenFromTokenVault();
+          console.log("[token-vault] set_calendar_reminder executing", { productId, dropDate, notes });
+          let accessToken: string;
+          try {
+            accessToken = getAccessTokenFromTokenVault();
+            console.log("[token-vault] got access token from vault, length:", (accessToken as any)?.length);
+          } catch (vaultErr) {
+            console.error("[token-vault] getAccessTokenFromTokenVault FAILED:", vaultErr);
+            throw vaultErr;
+          }
           const product = getProductById(productId);
           if (!product) return { error: "Product not found" };
 
           const startDateTime = dropDate;
-          const endDate = new Date(dropDate);
-          endDate.setHours(endDate.getHours() + 1);
-          const endDateTime = endDate.toISOString();
+          const endDateTime = new Date(
+            new Date(dropDate).getTime() + 60 * 60 * 1000
+          ).toISOString();
           const timeZone = getUserTimezone() || undefined;
 
-          const result = await createCalendarEvent(accessToken, {
-            summary: `Product Drop: ${product.name}`,
-            description:
-              notes || `Reminder for ${product.name} drop — $${product.price}`,
-            startDateTime,
-            endDateTime,
-            timeZone,
-          });
+          try {
+            const result = await createCalendarEvent(accessToken, {
+              summary: `Product Drop: ${product.name}`,
+              description:
+                notes || `Reminder for ${product.name} drop — $${product.price}`,
+              startDateTime,
+              endDateTime,
+              timeZone,
+            });
 
-          return {
-            success: true,
-            eventId: result.eventId,
-            calendarLink: result.htmlLink,
-            product: product.name,
-            reminderTime: result.start,
-          };
+            return {
+              success: true,
+              eventId: result.eventId,
+              calendarLink: result.htmlLink,
+              product: product.name,
+              reminderTime: result.start,
+            };
+          } catch (calErr: any) {
+            console.error("[token-vault] createCalendarEvent threw:", calErr.message);
+            // Return a structured error so the LLM knows this is a
+            // calendar API failure, NOT a Token Vault auth issue.
+            return {
+              error: "calendar_api_error",
+              message: "Failed to create the calendar event. The Google account is connected but the Calendar API returned an error. Please try again later.",
+              details: calErr.message,
+            };
+          }
         },
       })
     );
   } catch (e) {
-    console.warn("Token Vault calendar tool unavailable:", (e as Error).message);
+    console.error("[token-vault] calendar tool setup FAILED:", {
+      message: (e as Error).message,
+      stack: (e as Error).stack,
+      name: (e as Error).name,
+    });
   }
 
   _authorizedTools = tools;

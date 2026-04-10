@@ -33,6 +33,7 @@ export async function POST(request: Request) {
     userEmail,
     guestCart,
     userTimezone,
+    userLocalTime,
   }: {
     messages: UIMessage[];
     threadId?: string;
@@ -41,6 +42,7 @@ export async function POST(request: Request) {
     userEmail?: string;
     guestCart?: { productId: string; quantity: number; addedAt: string }[];
     userTimezone?: string;
+    userLocalTime?: string;
   } = await request.json();
 
   // Seed the in-memory guest cart so AI tools can read/write it
@@ -58,8 +60,16 @@ export async function POST(request: Request) {
   if (userId && userId !== "guest") {
     try {
       const session = await auth0.getSession();
+      console.log("[chat] session check:", {
+        hasSession: !!session,
+        hasUser: !!session?.user,
+        userSub: session?.user?.sub,
+        tokenSetKeys: Object.keys(session?.tokenSet || {}),
+        hasRefreshToken: !!session?.tokenSet?.refreshToken,
+      });
       if (session?.user) {
         const tokenResult = await auth0.getAccessToken();
+        console.log("[chat] access token obtained, length:", tokenResult.token?.length);
         setAuthAccessToken(tokenResult.token);
         if (session.tokenSet?.refreshToken) {
           setAuthRefreshToken(session.tokenSet.refreshToken);
@@ -68,8 +78,8 @@ export async function POST(request: Request) {
           console.warn("[chat] no refresh token in session. tokenSet keys:", Object.keys(session.tokenSet || {}));
         }
       }
-    } catch {
-      // If token retrieval fails, authenticated cart ops will gracefully error
+    } catch (err) {
+      console.error("[chat] session/token retrieval failed:", err);
     }
   }
 
@@ -118,7 +128,10 @@ export async function POST(request: Request) {
             "When a guest user explicitly asks to log in, sign in, create an account, or authenticate, use the redirect_to_login tool. " +
             "When you encounter a Token Vault authorization error for calendar features, use the redirect_to_google_connect tool to send them to connect their Google account. " +
             "Do NOT provide links for users to click manually — always use the redirect tools to automatically send them to the right page. " +
-            `The user's local timezone is "${userTimezone || "UTC"}". When creating calendar events or interpreting dates/times from the user, always use this timezone.`,
+            `The user's local timezone is "${userTimezone || "UTC"}". ` +
+            (userLocalTime ? `The user's current local date and time is: ${userLocalTime}. ` : "") +
+            "When creating calendar events or interpreting dates/times from the user, always use this timezone. " +
+            "When the user says relative times like 'tomorrow', 'next Friday', or '3pm', interpret them relative to their current local date and time shown above.",
           messages: await convertToModelMessages(messages),
           tools,
           stopWhen: stepCountIs(5),

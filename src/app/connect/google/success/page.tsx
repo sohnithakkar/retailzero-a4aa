@@ -12,17 +12,39 @@ export default function ConnectGoogleSuccessPage() {
     const openedAsPopup = window.opener && window.opener !== window;
     setIsPopup(openedAsPopup);
 
+    console.log("[connect/success] page loaded", {
+      openedAsPopup,
+      hasOpener: !!window.opener,
+      openerIsSelf: window.opener === window,
+      currentOrigin: window.location.origin,
+      currentHref: window.location.href,
+    });
+
     if (openedAsPopup) {
-      // Notify the parent window that OAuth succeeded
-      window.opener.postMessage(
-        { type: 'oauth-success', provider: 'google' },
-        window.location.origin
-      );
+      // Notify the parent window that OAuth succeeded.
+      // Use "*" as the target origin because Safari's ITP can cause
+      // the popup's origin to differ from the parent after OAuth
+      // redirects through Auth0's canonical domain and Google, which
+      // makes Safari silently drop origin-restricted messages.
+      // This is safe -- the payload contains no sensitive data and
+      // the parent validates the message shape before acting on it.
+      try {
+        window.opener.postMessage(
+          { type: 'oauth-success', provider: 'google' },
+          '*'
+        );
+        console.log("[connect/success] postMessage sent to opener with '*'");
+      } catch (err) {
+        console.error("[connect/success] postMessage failed:", err);
+      }
 
       // Close the popup after a brief delay
       setTimeout(() => {
+        console.log("[connect/success] closing popup");
         window.close();
       }, 1000);
+    } else {
+      console.warn("[connect/success] NOT a popup -- window.opener is", window.opener);
     }
   }, []);
 

@@ -430,8 +430,18 @@ function RedirectHandler({ output }: { output: any }) {
         );
 
         if (popup) {
+          let oauthConfirmed = false;
+          console.log("[redirect] popup opened successfully", { url: output.url });
+
           const handleMessage = (event: MessageEvent) => {
+            console.log("[redirect] received postMessage", {
+              origin: event.origin,
+              data: event.data,
+              source: event.source === popup ? 'popup' : 'other',
+            });
             if (event.data?.type === 'oauth-success') {
+              console.log("[redirect] oauth-success confirmed via postMessage");
+              oauthConfirmed = true;
               popup.close();
               window.removeEventListener('message', handleMessage);
               mutate('/api/auth/me');
@@ -440,10 +450,22 @@ function RedirectHandler({ output }: { output: any }) {
           };
           window.addEventListener('message', handleMessage);
 
+          // Polling fallback: if the popup closes without us receiving
+          // a postMessage (Safari ITP can block it even with "*"),
+          // optimistically refresh auth state. The user completed the
+          // OAuth flow and closed the window, so the connection likely
+          // succeeded -- the next chat request will pick up the new
+          // token vault credential.
           const checkClosed = setInterval(() => {
             if (popup.closed) {
               clearInterval(checkClosed);
               window.removeEventListener('message', handleMessage);
+              console.log("[redirect] popup closed", { oauthConfirmed });
+              if (!oauthConfirmed) {
+                console.log("[redirect] fallback: refreshing auth after popup closed without postMessage");
+                mutate('/api/auth/me');
+                window.dispatchEvent(new Event('auth-updated'));
+              }
             }
           }, 500);
         } else {
@@ -656,6 +678,7 @@ function ChatPanel({ onClose, onClear }: { onClose: () => void; onClear: () => v
       userName: user?.name,
       userEmail: user?.email,
       userTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      userLocalTime: new Date().toLocaleString("en-US", { dateStyle: "full", timeStyle: "short" }),
     };
     if (!user?.id) {
       body.guestCart = getGuestCart();
@@ -671,6 +694,7 @@ function ChatPanel({ onClose, onClear }: { onClose: () => void; onClear: () => v
       userName: user?.name,
       userEmail: user?.email,
       userTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      userLocalTime: new Date().toLocaleString("en-US", { dateStyle: "full", timeStyle: "short" }),
     };
     if (!user?.id) {
       body.guestCart = getGuestCart();

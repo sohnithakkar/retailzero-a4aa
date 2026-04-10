@@ -4,12 +4,19 @@ import { auth0Connect } from "@/lib/auth/auth0";
 export async function GET(req: NextRequest) {
   try {
     const session = await auth0Connect.getSession();
+    console.log("[connect/google] session check:", {
+      hasSession: !!session,
+      userSub: session?.user?.sub,
+      userEmail: session?.user?.email,
+    });
     if (!session) {
+      console.warn("[connect/google] no session on auth0Connect client -- redirecting with error");
       const url = new URL("/connect/google", req.url);
       url.searchParams.set("error", "no_session");
       return NextResponse.redirect(url);
     }
-  } catch {
+  } catch (err) {
+    console.warn("[connect/google] session check threw:", err);
     // Session check failed — proceed and let connectAccount handle it
   }
 
