@@ -15,11 +15,11 @@ This reference implementation shows developers and architects how to integrate A
 
 ---
 
-# Auth0 for AI Agents -- Use Cases
+# Auth0 for AI Agents: Use Cases
 
 This application demonstrates four core A4AA capabilities that solve the key challenges of letting AI agents act on behalf of users.
 
-## 1. Authentication -- User Context
+## 1. Authentication: User Context
 
 **Problem:** An AI agent running server-side needs to know who the user is and carry their identity into every tool call. Without authenticated context, the agent cannot access protected resources or act on behalf of a specific user.
 
@@ -45,7 +45,7 @@ src/
 └── ...
 ```
 
-## 2. Client-Initiated Backchannel Authentication (CIBA) -- Async Authorization
+## 2. Client-Initiated Backchannel Authentication (CIBA): Async Authorization
 
 **Problem:** When an AI agent performs a high-stakes action such as placing an order, the user should explicitly approve it, but the agent is running server-side without direct access to the user's browser session.
 
@@ -66,7 +66,7 @@ src/
 └── ...
 ```
 
-## 3. Fine-Grained Authorization (FGA) -- Scoped Resource Access
+## 3. Fine-Grained Authorization (FGA): Scoped Resource Access
 
 **Problem:** The AI agent can call tools that modify user data (such as editing a profile) or query sensitive data (such as order history). It must only be allowed to access resources the current user is authorized for, not other users' data.
 
@@ -88,7 +88,7 @@ src/
 └── ...
 ```
 
-## 4. Token Vault -- Third-Party API Access
+## 4. Token Vault: Third-Party API Access
 
 **Problem:** The AI agent needs to call external APIs (Google Calendar) on behalf of the user, which requires valid OAuth tokens for that third-party service. Managing token exchange, refresh, and storage is complex and error-prone.
 
