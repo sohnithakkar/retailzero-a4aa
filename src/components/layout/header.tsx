@@ -52,30 +52,30 @@ export function Header() {
   }, [refreshCount]);
 
   return (
-    <header className="border-b border-[#2a2a2a] bg-[#191919] text-neutral-100">
+    <header className="border-b border-gray-200 bg-white text-gray-900">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2 font-bold text-xl">
-          <Store className="h-6 w-6 text-[#B49BFC]" />
+          <Store className="h-6 w-6 text-[#4016A0]" />
           <span>
-            Retail<span className="text-[#B49BFC]">Zero</span>
+            Retail<span className="text-[#4016A0]">Zero</span>
           </span>
         </Link>
 
         <nav className="flex items-center gap-6">
           <Link
             href="/products"
-            className="text-sm font-medium text-neutral-400 hover:text-white transition-colors"
+            className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
           >
             Products
           </Link>
           <Link
             href="/cart"
-            className="text-sm font-medium text-neutral-400 hover:text-white transition-colors flex items-center gap-1 relative"
+            className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1 relative"
           >
             <ShoppingCart className="h-4 w-4" />
             Cart
             {itemCount > 0 && (
-              <span className="absolute -top-2 -right-3 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#B49BFC] px-1 text-[10px] font-bold text-black">
+              <span className="absolute -top-2 -right-3 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#4016A0] px-1 text-[10px] font-bold text-white">
                 {itemCount > 99 ? "99+" : itemCount}
               </span>
             )}
@@ -84,21 +84,21 @@ export function Header() {
             <>
               <Link
                 href="/orders"
-                className="text-sm font-medium text-neutral-400 hover:text-white transition-colors flex items-center gap-1"
+                className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1"
               >
                 <Package className="h-4 w-4" />
                 Orders
               </Link>
               <Link
                 href="/account"
-                className="text-sm font-medium text-neutral-400 hover:text-white transition-colors flex items-center gap-1"
+                className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1"
               >
                 <User className="h-4 w-4" />
                 {user?.name || "Account"}
               </Link>
               <button
                 onClick={() => logout()}
-                className="text-sm font-medium text-neutral-400 hover:text-white transition-colors flex items-center gap-1"
+                className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1"
               >
                 <LogOut className="h-4 w-4" />
                 Logout
@@ -107,7 +107,7 @@ export function Header() {
           ) : (
             <Link
               href="/login"
-              className="text-sm font-medium text-neutral-400 hover:text-white transition-colors flex items-center gap-1"
+              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1"
             >
               <LogIn className="h-4 w-4" />
               Login

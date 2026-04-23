@@ -20,7 +20,7 @@ function highlightJson(json: string): React.ReactNode[] {
   while ((match = rx.exec(json)) !== null) {
     if (match.index > last) {
       nodes.push(
-        <span key={`t${last}`} className="text-neutral-500">
+        <span key={`t${last}`} className="text-gray-500">
           {json.slice(last, match.index)}
         </span>
       );
@@ -28,25 +28,25 @@ function highlightJson(json: string): React.ReactNode[] {
 
     if (match[1]) {
       nodes.push(
-        <span key={`k${match.index}`} className="text-[#7aa2f7]">
+        <span key={`k${match.index}`} className="text-blue-600">
           {match[1]}
         </span>
       );
     } else if (match[2]) {
       nodes.push(
-        <span key={`s${match.index}`} className="text-[#9ece6a]">
+        <span key={`s${match.index}`} className="text-green-600">
           {match[2]}
         </span>
       );
     } else if (match[3]) {
       nodes.push(
-        <span key={`b${match.index}`} className="text-[#ff9e64]">
+        <span key={`b${match.index}`} className="text-orange-600">
           {match[3]}
         </span>
       );
     } else if (match[4]) {
       nodes.push(
-        <span key={`n${match.index}`} className="text-[#e0af68]">
+        <span key={`n${match.index}`} className="text-amber-600">
           {match[4]}
         </span>
       );
@@ -57,7 +57,7 @@ function highlightJson(json: string): React.ReactNode[] {
 
   if (last < json.length) {
     nodes.push(
-      <span key={`t${last}`} className="text-neutral-500">
+      <span key={`t${last}`} className="text-gray-500">
         {json.slice(last)}
       </span>
     );
@@ -130,7 +130,7 @@ export function TokenViewer() {
               }}
               className={`px-4 py-2.5 text-xs font-medium whitespace-nowrap transition-colors border-b-2 -mb-px ${
                 i === activeIndex
-                  ? "border-[#B49BFC] text-foreground"
+                  ? "border-[#4016A0] text-foreground"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -180,11 +180,11 @@ export function TokenViewer() {
 
           {/* Token content */}
           {view === "raw" ? (
-            <pre className="text-xs font-mono bg-[#1a1b26] rounded-md p-3 overflow-x-auto whitespace-pre-wrap break-all max-h-64 overflow-y-auto">
-              <span className="text-neutral-300">{active.raw}</span>
+            <pre className="text-xs font-mono bg-gray-100 rounded-md p-3 overflow-x-auto whitespace-pre-wrap break-all max-h-64 overflow-y-auto">
+              <span className="text-gray-800">{active.raw}</span>
             </pre>
           ) : (
-            <pre className="text-xs font-mono bg-[#1a1b26] rounded-md p-3 overflow-x-auto whitespace-pre-wrap max-h-64 overflow-y-auto leading-relaxed">
+            <pre className="text-xs font-mono bg-gray-100 rounded-md p-3 overflow-x-auto whitespace-pre-wrap max-h-64 overflow-y-auto leading-relaxed">
               {highlightJson(JSON.stringify(active.decoded, null, 2))}
             </pre>
           )}

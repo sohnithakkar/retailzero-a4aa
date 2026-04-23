@@ -81,7 +81,7 @@ export default function OrdersPage() {
           {[...orders].reverse().map((order) => (
             <div
               key={order.orderId}
-              className="rounded-lg border border-[#2a2a2a] bg-[#1e1e1e] p-6"
+              className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm"
             >
               <div className="flex items-center justify-between mb-4">
                 <div>
@@ -102,7 +102,7 @@ export default function OrdersPage() {
                   ${order.total.toFixed(2)}
                 </p>
               </div>
-              <div className="divide-y divide-[#2a2a2a]">
+              <div className="divide-y divide-gray-200">
                 {order.items.map((item) => (
                   <div
                     key={item.productId}

@@ -242,7 +242,7 @@ export function ProfileForm({ initialData, onSave }: ProfileFormProps) {
                 type="button"
                 onClick={handleDisconnect}
                 disabled={disconnecting}
-                className="inline-flex items-center justify-center rounded-md border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                className="inline-flex items-center justify-center rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50"
               >
                 {disconnecting ? "Disconnecting..." : "Disconnect"}
               </button>

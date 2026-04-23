@@ -19,7 +19,7 @@ export const maxDuration = 300;
 
 const anthropic = createAnthropic({
   baseURL: `${process.env.ANTHROPIC_BASE_URL}/v1`,
-  apiKey: process.env.ANTHROPIC_API_KEY,
+  apiKey: process.env.ANTHROPIC_API_KEY || process.env.LITELLM_KEY,
 });
 
 const chatModel = anthropic("claude-4-6-opus");

@@ -131,7 +131,7 @@ function MessageContent({ text }: { text: string }) {
             href={href}
             target={href?.startsWith("/") ? "_self" : "_blank"}
             rel="noopener noreferrer"
-            className="underline text-[#B49BFC] hover:text-[#c9b5fd]"
+            className="underline text-[#4016A0] hover:text-[#5a2db8]"
           >
             {children}
           </a>
@@ -832,7 +832,7 @@ function ChatPanel({ onClose, onClear }: { onClose: () => void; onClear: () => v
 
         {/* Auth0 AI interruption — CIBA (pending device approval) */}
         {toolInterrupt && interruptType === "ciba_pending" && (
-          <div className="rounded-lg border border-blue-300 bg-blue-50 p-3 text-sm">
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm">
             <p className="font-medium text-blue-800">
               Purchase approval required
             </p>
@@ -851,7 +851,7 @@ function ChatPanel({ onClose, onClear }: { onClose: () => void; onClear: () => v
 
         {/* Auth0 AI interruption — CIBA (expired) */}
         {toolInterrupt && interruptType === "ciba_expired" && (
-          <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm">
+          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm">
             <p className="font-medium text-red-800">
               Approval expired
             </p>
@@ -870,7 +870,7 @@ function ChatPanel({ onClose, onClear }: { onClose: () => void; onClear: () => v
 
         {/* Auth0 AI interruption — CIBA (denied) */}
         {toolInterrupt && interruptType === "ciba_denied" && (
-          <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm">
+          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm">
             <p className="font-medium text-red-800">
               Purchase denied
             </p>
@@ -882,7 +882,7 @@ function ChatPanel({ onClose, onClear }: { onClose: () => void; onClear: () => v
 
         {/* Auth0 AI interruption — FGA (unauthorized) */}
         {toolInterrupt && interruptType === "fga_denied" && (
-          <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm">
+          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm">
             <p className="font-medium text-red-800">
               Access denied
             </p>
@@ -895,7 +895,7 @@ function ChatPanel({ onClose, onClear }: { onClose: () => void; onClear: () => v
 
         {/* Auth0 AI interruption — Token Vault (account connection) */}
         {toolInterrupt && interruptType === "token_vault" && (
-          <div className="rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-sm">
+          <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm">
             <p className="font-medium text-yellow-800">
               Authorization required
             </p>
@@ -913,11 +913,11 @@ function ChatPanel({ onClose, onClear }: { onClose: () => void; onClear: () => v
 
         {/* Auth0 AI interruption — unknown / fallback */}
         {toolInterrupt && interruptType === "unknown" && (
-          <div className="rounded-lg border border-gray-300 bg-gray-50 p-3 text-sm">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm">
             <p className="font-medium text-gray-800">
               Action required
             </p>
-            <p className="mt-1 text-gray-700">
+            <p className="mt-1 text-gray-600">
               {toolInterrupt.message || "Additional authorization is needed to complete this action."}
             </p>
             <button

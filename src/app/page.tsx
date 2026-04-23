@@ -5,13 +5,13 @@ export default function LandingPage() {
   return (
     <div>
       {/* Hero section */}
-      <section className="bg-[#191919] text-white py-24 px-4">
+      <section className="bg-gradient-to-b from-[#f8f6fc] to-white py-24 px-4">
         <div className="container mx-auto max-w-3xl text-center">
-          <h1 className="text-5xl font-bold tracking-tight sm:text-6xl">
+          <h1 className="text-5xl font-bold tracking-tight sm:text-6xl text-gray-900">
             Shop smarter with{" "}
-            <span className="text-[#B49BFC]">RetailZero</span>
+            <span className="text-[#4016A0]">RetailZero</span>
           </h1>
-          <p className="mt-6 text-lg text-neutral-400 leading-relaxed">
+          <p className="mt-6 text-lg text-gray-600 leading-relaxed">
             AI-powered shopping meets enterprise-grade security. Discover
             products through natural conversation, check out with confidence
             using Auth0 CIBA step-up authentication, and enjoy fine-grained
@@ -29,36 +29,36 @@ export default function LandingPage() {
       {/* About section */}
       <section className="bg-white py-20 px-4">
         <div className="container mx-auto max-w-5xl">
-          <h2 className="text-3xl font-bold text-center text-[#191919] mb-12">
+          <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
             About RetailZero
           </h2>
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="rounded-lg border p-6 text-center">
+            <div className="rounded-lg border border-gray-200 bg-white p-6 text-center shadow-sm">
               <Bot className="mx-auto h-10 w-10 text-[#4016A0]" />
-              <h3 className="mt-4 text-lg font-semibold text-[#191919]">
+              <h3 className="mt-4 text-lg font-semibold text-gray-900">
                 AI Shopping Assistant
               </h3>
-              <p className="mt-2 text-sm text-neutral-600">
+              <p className="mt-2 text-sm text-gray-600">
                 Discover products through a conversational AI assistant that
                 understands what you need and surfaces the best matches.
               </p>
             </div>
-            <div className="rounded-lg border p-6 text-center">
+            <div className="rounded-lg border border-gray-200 bg-white p-6 text-center shadow-sm">
               <Shield className="mx-auto h-10 w-10 text-[#4016A0]" />
-              <h3 className="mt-4 text-lg font-semibold text-[#191919]">
+              <h3 className="mt-4 text-lg font-semibold text-gray-900">
                 Secure Checkout
               </h3>
-              <p className="mt-2 text-sm text-neutral-600">
+              <p className="mt-2 text-sm text-gray-600">
                 Complete purchases with CIBA step-up approval, ensuring every
                 high-value transaction is verified on a trusted device.
               </p>
             </div>
-            <div className="rounded-lg border p-6 text-center">
+            <div className="rounded-lg border border-gray-200 bg-white p-6 text-center shadow-sm">
               <Lock className="mx-auto h-10 w-10 text-[#4016A0]" />
-              <h3 className="mt-4 text-lg font-semibold text-[#191919]">
+              <h3 className="mt-4 text-lg font-semibold text-gray-900">
                 Fine-Grained Access
               </h3>
-              <p className="mt-2 text-sm text-neutral-600">
+              <p className="mt-2 text-sm text-gray-600">
                 FGA role-based controls protect every resource, giving admins
                 and shoppers exactly the permissions they need.
               </p>
