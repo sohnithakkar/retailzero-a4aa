@@ -11,7 +11,7 @@ import { mutate } from "swr";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-const CHAT_STORAGE_KEY = "retailzero-chat";
+const CHAT_STORAGE_KEY = "eduzero-chat";
 
 /** Neutralize redirect tool outputs so restored messages don't re-trigger redirects. */
 function sanitizeRedirectResults(messages: UIMessage[]): UIMessage[] {
@@ -131,7 +131,7 @@ function MessageContent({ text }: { text: string }) {
             href={href}
             target={href?.startsWith("/") ? "_self" : "_blank"}
             rel="noopener noreferrer"
-            className="underline text-[#4016A0] hover:text-[#5a2db8]"
+            className="underline text-[#0066CC] hover:text-[#0052a3]"
           >
             {children}
           </a>
@@ -204,6 +204,9 @@ type Product = {
   stock?: number;
   image?: string;
   description?: string;
+  type?: "course" | "software";
+  credits?: number;
+  schedule?: string;
 };
 
 function ProductDetailModal({
@@ -252,17 +255,31 @@ function ProductDetailModal({
               </span>
             </div>
 
-            <div className="flex items-center gap-4">
-              <span className="text-2xl font-bold">${product.price.toFixed(2)}</span>
+            <div className="flex items-center gap-4 flex-wrap">
+              {product.type === "course" ? (
+                <span className="text-2xl font-bold">{product.credits} credits</span>
+              ) : (
+                <span className="text-2xl font-bold">
+                  ${product.price.toFixed(2)}{product.type === "software" ? "/year" : ""}
+                </span>
+              )}
               {product.rating > 0 && (
                 <span className="flex items-center gap-1 text-sm text-muted-foreground">
                   <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                   {product.rating}
                 </span>
               )}
-              {product.stock !== undefined && (
+              {product.type === "course" ? (
+                product.schedule && (
+                  <span className="text-xs text-muted-foreground">
+                    {product.schedule}
+                  </span>
+                )
+              ) : product.stock !== undefined && (
                 <span className="text-xs text-muted-foreground">
-                  {product.stock > 0 ? `${product.stock} in stock` : "Out of stock"}
+                  {product.type === "software"
+                    ? (product.stock > 0 ? `${product.stock} licenses available` : "Contact sales")
+                    : (product.stock > 0 ? `${product.stock} in stock` : "Out of stock")}
                 </span>
               )}
             </div>
@@ -279,10 +296,12 @@ function ProductDetailModal({
         <div className="p-6 pt-0">
           <button
             onClick={() => { onAddToCart?.(product.id); onClose(); }}
-            disabled={product.stock === 0 || !onAddToCart}
+            disabled={(product.type !== "course" && product.stock === 0) || !onAddToCart}
             className="w-full py-3 px-4 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {product.stock === 0 ? "Out of Stock" : "Add to Cart"}
+            {product.type === "course"
+              ? "Enroll Now"
+              : (product.stock === 0 ? "Out of Stock" : "Add to Cart")}
           </button>
         </div>
       </div>
@@ -384,12 +403,14 @@ function ProductCarousel({
               <div className="p-1.5">
                 <h4 className="font-medium text-[10px] leading-tight line-clamp-1">{p.name}</h4>
                 <div className="flex items-center justify-between mt-1">
-                  <span className="text-[11px] font-bold">${p.price.toFixed(2)}</span>
+                  <span className="text-[11px] font-bold">
+                    {p.type === "course" ? `${p.credits} cr` : `$${p.price.toFixed(2)}`}
+                  </span>
                   <button
                     onClick={(e) => { e.stopPropagation(); onAddToCart?.(p.id); }}
-                    disabled={p.stock === 0 || !onAddToCart}
+                    disabled={(p.type !== "course" && p.stock === 0) || !onAddToCart}
                     className="h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    aria-label={`Add ${p.name} to cart`}
+                    aria-label={p.type === "course" ? `Enroll in ${p.name}` : `Add ${p.name} to cart`}
                   >
                     <Plus className="h-3 w-3" />
                   </button>
@@ -740,7 +761,7 @@ function ChatPanel({ onClose, onClear }: { onClose: () => void; onClear: () => v
        <div className="space-y-4">
         {messages.length === 0 && (
           <p className="text-sm text-muted-foreground text-center mt-8">
-            Hi! How can I help you today?
+            Hi! I&apos;m Zero, your education assistant. How can I help you today?
           </p>
         )}
         {messages.map((msg) => {
@@ -939,7 +960,7 @@ function ChatPanel({ onClose, onClear }: { onClose: () => void; onClear: () => v
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask me anything..."
+            placeholder="Ask about courses, enrollment, or school tools..."
             className="flex-1 h-12 rounded-md border border-input bg-background px-4 py-3 text-sm"
             disabled={isLoading}
           />

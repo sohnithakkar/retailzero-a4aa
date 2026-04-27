@@ -93,16 +93,16 @@ export function getUserTimezone(): string | null {
 
 export const showProducts = tool({
   description:
-    "Search and list products in the store. Can filter by search query and/or category.",
+    "Browse courses and education software solutions. Can filter by search query and/or category.",
   inputSchema: z.object({
     query: z
       .string()
       .optional()
-      .describe("Search query to filter products by name or description"),
+      .describe("Search query to filter by name or description"),
     category: z
       .string()
       .optional()
-      .describe("Category filter (Electronics, Clothing, Home, Sports)"),
+      .describe("Category filter (Mathematics, Science, History, Technology, Arts, Health, Language Arts, Administration, Assessment, Communication, Curriculum, Analytics)"),
   }),
   execute: async ({ query, category }) => {
     const products = searchProducts(query, category);
@@ -120,9 +120,9 @@ export const showProducts = tool({
 });
 
 export const getProductDetails = tool({
-  description: "Get detailed information about a specific product by ID.",
+  description: "Get detailed information about a course or software module by ID.",
   inputSchema: z.object({
-    productId: z.string().describe("The product ID to look up"),
+    productId: z.string().describe("The course or software ID to look up"),
   }),
   execute: async ({ productId }) => {
     const product = getProductById(productId);
@@ -154,7 +154,7 @@ function enrichCart(items: { productId: string; quantity: number }[]) {
 
 const viewCartTool = tool({
   description:
-    "View the contents of the current user's shopping cart. Do not ask the user for their userId — it is provided automatically.",
+    "View courses and solutions in the enrollment cart. Do not ask the user for their userId — it is provided automatically.",
   inputSchema: z.object({
     userId: z
       .string()
@@ -179,14 +179,14 @@ const viewCartTool = tool({
 
 const addToCartTool = tool({
   description:
-    "Add a product to the current user's shopping cart. If the product is already in the cart, increases the quantity. Do not ask the user for their userId — it is provided automatically.",
+    "Add a course or software solution to the enrollment cart. If already in the cart, increases the quantity. Do not ask the user for their userId — it is provided automatically.",
   inputSchema: z.object({
     userId: z
       .string()
       .optional()
       .default("guest")
       .describe("The user ID (provided automatically, do not ask the user)"),
-    productId: z.string().describe("The product ID to add"),
+    productId: z.string().describe("The course or software ID to add"),
     quantity: z
       .number()
       .int()
@@ -238,8 +238,8 @@ const addToCartTool = tool({
 
 const prepareCheckoutTool = tool({
   description:
-    "Preview the current user's cart for checkout. Returns the cart summary with items and total. " +
-    "Call this BEFORE calling checkout_cart so the user knows what they are purchasing and that a push notification will be sent for approval. " +
+    "Preview the enrollment cart before completing registration. Returns the cart summary with items and total. " +
+    "Call this BEFORE calling checkout_cart so the user knows what they are enrolling in and that a push notification will be sent for approval. " +
     "Do not ask the user for their userId — it is provided automatically.",
   inputSchema: z.object({
     userId: z
@@ -275,7 +275,7 @@ const prepareCheckoutTool = tool({
 
 const viewProfileTool = tool({
   description:
-    "View the current user's profile information. Do not ask the user for their userId — it is provided automatically.",
+    "View the current student or educator profile information. Do not ask the user for their userId — it is provided automatically.",
   inputSchema: z.object({
     userId: z
       .string()
@@ -293,7 +293,7 @@ const viewProfileTool = tool({
 const redirectToLoginTool = tool({
   description:
     "Redirect the user to the login page. Use this when a guest user asks to log in, sign in, or authenticate. " +
-    "This will redirect them to the login page and return them back to the store after authentication.",
+    "This will redirect them to the login page and return them back to EduZero after authentication.",
   inputSchema: z.object({
     returnTo: z
       .string()
@@ -326,8 +326,8 @@ const redirectToGoogleConnectTool = tool({
 
 const searchOrdersTool = tool({
   description:
-    "Search the current user's order history. Returns past orders filtered by fine-grained authorization. " +
-    "Use this to answer questions about past purchases, order totals, items bought, etc. " +
+    "Search enrollment history and past registrations. Returns past enrollments filtered by fine-grained authorization. " +
+    "Use this to answer questions about courses taken, enrollment dates, etc. " +
     "Do not ask the user for their userId — it is provided automatically.",
   inputSchema: z.object({
     userId: z
@@ -414,8 +414,8 @@ function getAuthorizedTools(): Record<string, Tool> {
     tools.checkout_cart = withCIBA(
       tool({
         description:
-          "Process checkout for a user's cart. Returns an order confirmation with order ID and total. " +
-          "High-value purchases require user approval on their device via push notification.",
+          "Complete enrollment and confirm registration. Returns a confirmation with enrollment ID and total. " +
+          "Enrollments require user approval on their device via push notification.",
         inputSchema: z.object({
           userId: z.string().describe("The user ID whose cart to checkout"),
         }),
@@ -481,7 +481,7 @@ function getAuthorizedTools(): Record<string, Tool> {
     tools.edit_profile = withFGA(
       tool({
         description:
-          "Update a user's profile information (name, address, preferences). " +
+          "Update student or educator profile information (name, address, preferences). " +
           "Only the profile owner or an admin can edit a profile.",
         inputSchema: z.object({
           userId: z.string().describe("The user ID whose profile to update"),
@@ -534,7 +534,7 @@ function getAuthorizedTools(): Record<string, Tool> {
     tools.set_calendar_reminder = protect(
       tool({
         description:
-          "Set a Google Calendar reminder for a product drop or restock. " +
+          "Set reminders for classes, assignments, or deadlines. " +
           "Creates a calendar event on the user's Google Calendar. " +
           "If this tool fails with an authorization error, the user needs to connect their Google account " +
           "by visiting /connect/google — tell them to click the link and authorize, then try again.",

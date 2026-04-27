@@ -12,6 +12,9 @@ export interface Product {
   category: string;
   stock: number;
   rating: number;
+  type?: "course" | "software";
+  credits?: number;
+  schedule?: string;
 }
 
 function readProducts(): Product[] {
@@ -43,4 +46,12 @@ export function searchProducts(query?: string, category?: string): Product[] {
     );
   }
   return products;
+}
+
+export function getCourses(): Product[] {
+  return readProducts().filter((p) => p.type === "course");
+}
+
+export function getSoftware(): Product[] {
+  return readProducts().filter((p) => p.type === "software");
 }

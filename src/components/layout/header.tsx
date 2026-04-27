@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/provider";
 import { getGuestCart } from "@/lib/cart/guest-cart";
-import { ShoppingCart, User, LogIn, LogOut, Store, Package } from "lucide-react";
+import { ShoppingCart, User, LogIn, LogOut, GraduationCap, Package, BookOpen, Laptop } from "lucide-react";
 
 export function Header() {
   const { user, isAuthenticated, isLoading: authLoading, logout } = useAuth();
@@ -55,18 +55,26 @@ export function Header() {
     <header className="border-b border-gray-200 bg-white text-gray-900">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2 font-bold text-xl">
-          <Store className="h-6 w-6 text-[#4016A0]" />
+          <GraduationCap className="h-6 w-6 text-[#0066CC]" />
           <span>
-            Retail<span className="text-[#4016A0]">Zero</span>
+            Edu<span className="text-[#0066CC]">Zero</span>
           </span>
         </Link>
 
         <nav className="flex items-center gap-6">
           <Link
-            href="/products"
-            className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+            href="/courses"
+            className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1"
           >
-            Products
+            <BookOpen className="h-4 w-4" />
+            Courses
+          </Link>
+          <Link
+            href="/software"
+            className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1"
+          >
+            <Laptop className="h-4 w-4" />
+            Software
           </Link>
           <Link
             href="/cart"
@@ -75,7 +83,7 @@ export function Header() {
             <ShoppingCart className="h-4 w-4" />
             Cart
             {itemCount > 0 && (
-              <span className="absolute -top-2 -right-3 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#4016A0] px-1 text-[10px] font-bold text-white">
+              <span className="absolute -top-2 -right-3 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#0066CC] px-1 text-[10px] font-bold text-white">
                 {itemCount > 99 ? "99+" : itemCount}
               </span>
             )}

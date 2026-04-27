@@ -9,8 +9,8 @@ import { ChatWidget } from "@/components/chat/chat-widget";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "RetailZero",
-  description: "A modern retail storefront powered by Auth0",
+  title: "EduZero",
+  description: "AI-powered education platform with enterprise-grade security",
 };
 
 export default function RootLayout({
