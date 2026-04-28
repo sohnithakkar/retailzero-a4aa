@@ -88,6 +88,29 @@ export function getUserTimezone(): string | null {
 }
 
 // ---------------------------------------------------------------------------
+// User role and grade level context — set per-request from the chat route
+// ---------------------------------------------------------------------------
+
+let _userRole: "student" | "admin" | null = null;
+let _userGradeLevel: string | null = null;
+
+export function setUserRole(role: "student" | "admin") {
+  _userRole = role;
+}
+
+export function getUserRole(): "student" | "admin" | null {
+  return _userRole;
+}
+
+export function setUserGradeLevel(gradeLevel: string) {
+  _userGradeLevel = gradeLevel;
+}
+
+export function getUserGradeLevel(): string | null {
+  return _userGradeLevel;
+}
+
+// ---------------------------------------------------------------------------
 // Public tools (no auth required) — safe to define at module level
 // ---------------------------------------------------------------------------
 
@@ -128,6 +151,138 @@ export const getProductDetails = tool({
     const product = getProductById(productId);
     if (!product) return { error: "Product not found" };
     return product;
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Student learning tools — for students to get help with coursework
+// ---------------------------------------------------------------------------
+
+export const explainConceptTool = tool({
+  description:
+    "Explain a concept or topic to the student at their grade level. " +
+    "Use clear language, relatable examples, and break down complex ideas. " +
+    "This tool is only available to students.",
+  inputSchema: z.object({
+    topic: z
+      .string()
+      .describe("The concept or topic to explain (e.g., 'photosynthesis', 'fractions', 'the American Revolution')"),
+    subject: z
+      .string()
+      .optional()
+      .describe("The subject area (e.g., 'Math', 'Science', 'History', 'English')"),
+    additionalContext: z
+      .string()
+      .optional()
+      .describe("Any additional context about what the student is struggling with or wants to know"),
+  }),
+  execute: async ({
+    topic,
+    subject,
+    additionalContext,
+  }: {
+    topic: string;
+    subject?: string;
+    additionalContext?: string;
+  }) => {
+    const role = getUserRole();
+    if (role !== "student") {
+      return {
+        error: "This tool is only available to students.",
+        suggestion: "Admins can browse software solutions using show_products.",
+      };
+    }
+
+    const gradeLevel = getUserGradeLevel() || "8"; // Default to 8th grade if not set
+
+    // Return structured data that the LLM will use to generate the explanation
+    return {
+      requestType: "explain_concept",
+      topic,
+      subject: subject || "General",
+      gradeLevel,
+      additionalContext: additionalContext || null,
+      instructions:
+        `Generate an age-appropriate explanation of "${topic}" for a grade ${gradeLevel} student. ` +
+        "Include: 1) A simple definition, 2) A real-world example or analogy, " +
+        "3) Why it matters or how it connects to things they know. " +
+        "Keep the language accessible and encouraging.",
+    };
+  },
+});
+
+export const createPracticeProblemsTool = tool({
+  description:
+    "Generate practice problems or questions for a student to work on. " +
+    "Problems are tailored to the student's grade level. " +
+    "This tool is only available to students.",
+  inputSchema: z.object({
+    topic: z
+      .string()
+      .describe("The topic or skill to practice (e.g., 'multiplication', 'vocabulary', 'grammar')"),
+    subject: z
+      .string()
+      .describe("The subject area (e.g., 'Math', 'Science', 'History', 'English')"),
+    difficulty: z
+      .enum(["easy", "medium", "hard"])
+      .optional()
+      .default("medium")
+      .describe("Difficulty level of the problems"),
+    numberOfProblems: z
+      .number()
+      .int()
+      .min(1)
+      .max(10)
+      .optional()
+      .default(5)
+      .describe("Number of practice problems to generate (1-10)"),
+    includeAnswers: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe("Whether to include answers (set to true for self-study, false for quiz mode)"),
+  }),
+  execute: async ({
+    topic,
+    subject,
+    difficulty,
+    numberOfProblems,
+    includeAnswers,
+  }: {
+    topic: string;
+    subject: string;
+    difficulty: "easy" | "medium" | "hard";
+    numberOfProblems: number;
+    includeAnswers: boolean;
+  }) => {
+    const role = getUserRole();
+    if (role !== "student") {
+      return {
+        error: "This tool is only available to students.",
+        suggestion: "Admins can browse software solutions using show_products.",
+      };
+    }
+
+    const gradeLevel = getUserGradeLevel() || "8"; // Default to 8th grade if not set
+
+    // Return structured data that the LLM will use to generate practice problems
+    return {
+      requestType: "create_practice_problems",
+      topic,
+      subject,
+      gradeLevel,
+      difficulty,
+      numberOfProblems,
+      includeAnswers,
+      instructions:
+        `Generate ${numberOfProblems} ${difficulty} practice problems about "${topic}" in ${subject} ` +
+        `for a grade ${gradeLevel} student. ` +
+        (includeAnswers
+          ? "Include the answers after each problem."
+          : "Do NOT include answers — let the student try first.") +
+        " Make problems progressively build on each other when possible. " +
+        "Use encouraging language and provide clear instructions for each problem.",
+    };
   },
 });
 
@@ -627,7 +782,10 @@ function getAuthorizedTools(): Record<string, Tool> {
 // Call getRetailTools() at request time (not at module level).
 // ---------------------------------------------------------------------------
 export function getRetailTools() {
-  const sessionTools = {
+  const role = getUserRole();
+
+  // Base tools available to all users
+  const baseTools: Record<string, Tool<any, any>> = {
     show_products: showProducts,
     get_product_details: getProductDetails,
     view_cart: viewCartTool,
@@ -639,15 +797,21 @@ export function getRetailTools() {
     redirect_to_google_connect: redirectToGoogleConnectTool,
   };
 
+  // Student-only learning tools
+  if (role === "student") {
+    baseTools.explain_concept = explainConceptTool;
+    baseTools.create_practice_problems = createPracticeProblemsTool;
+  }
+
   try {
     const authorizedTools = getAuthorizedTools();
-    return { ...sessionTools, ...authorizedTools };
+    return { ...baseTools, ...authorizedTools };
   } catch (e) {
     console.warn(
       "Auth0AI tools could not be initialized (missing env vars?) — " +
         "checkout, profile edit, and calendar tools will be unavailable.",
       (e as Error).message
     );
-    return sessionTools;
+    return baseTools;
   }
 }

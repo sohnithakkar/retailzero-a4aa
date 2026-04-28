@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, type ReactNode } from "react";
 
 interface TokenInfo {
   label: string;
@@ -10,8 +10,8 @@ interface TokenInfo {
 }
 
 /** Simple JSON syntax highlighter -- no dependencies. */
-function highlightJson(json: string): React.ReactNode[] {
-  const nodes: React.ReactNode[] = [];
+function highlightJson(json: string): ReactNode[] {
+  const nodes: ReactNode[] = [];
   const rx =
     /("(?:\\.|[^"\\])*")\s*(?=:)|("(?:\\.|[^"\\])*")|(true|false|null)|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g;
   let last = 0;
@@ -112,7 +112,8 @@ export function TokenViewer() {
     return null;
   }
 
-  const active = tokens[activeIndex];
+  const active: TokenInfo | undefined = tokens[activeIndex];
+  if (!active) return null;
 
   return (
     <div className="border-t border-input pt-6 mt-6">
@@ -190,14 +191,14 @@ export function TokenViewer() {
           )}
 
           {/* Expiry info */}
-          {active.decoded?.exp && (
+          {typeof active.decoded?.exp === "number" && (
             <p className="text-xs text-muted-foreground">
-              Expires: {new Date((active.decoded.exp as number) * 1000).toLocaleString()}
+              Expires: {new Date(active.decoded.exp * 1000).toLocaleString()}
             </p>
           )}
-          {active.decoded?.expires_at && (
+          {typeof active.decoded?.expires_at === "string" && (
             <p className="text-xs text-muted-foreground">
-              Expires: {new Date(active.decoded.expires_at as string).toLocaleString()}
+              Expires: {new Date(active.decoded.expires_at).toLocaleString()}
             </p>
           )}
         </div>

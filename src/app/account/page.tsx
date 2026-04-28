@@ -4,10 +4,15 @@ import { useEffect, useState } from "react";
 import { ProfileForm } from "@/components/account/profile-form";
 import { TokenViewer } from "@/components/account/token-viewer";
 
+type UserRole = "student" | "admin";
+type GradeLevel = "K" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10" | "11" | "12";
+
 interface UserData {
   id: string;
   email: string;
   name: string;
+  role: UserRole;
+  gradeLevel?: GradeLevel;
   address: { street: string; city: string; state: string; zip: string };
   preferences: { newsletter: boolean; theme: "light" | "dark" };
 }

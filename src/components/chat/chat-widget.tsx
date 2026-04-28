@@ -700,6 +700,8 @@ function ChatPanel({ onClose, onClear }: { onClose: () => void; onClear: () => v
       userEmail: user?.email,
       userTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       userLocalTime: new Date().toLocaleString("en-US", { dateStyle: "full", timeStyle: "short" }),
+      userRole: user?.role,
+      userGradeLevel: user?.gradeLevel,
     };
     if (!user?.id) {
       body.guestCart = getGuestCart();
@@ -716,6 +718,8 @@ function ChatPanel({ onClose, onClear }: { onClose: () => void; onClear: () => v
       userEmail: user?.email,
       userTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       userLocalTime: new Date().toLocaleString("en-US", { dateStyle: "full", timeStyle: "short" }),
+      userRole: user?.role,
+      userGradeLevel: user?.gradeLevel,
     };
     if (!user?.id) {
       body.guestCart = getGuestCart();

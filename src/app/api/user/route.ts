@@ -8,6 +8,10 @@ import {
 const AUTH0_DOMAIN = process.env.AUTH0_DOMAIN;
 const DEFAULT_ADDRESS = { street: "", city: "", state: "", zip: "" };
 const DEFAULT_PREFERENCES = { newsletter: false, theme: "light" as const };
+const DEFAULT_ROLE = "student" as const;
+
+type UserRole = "student" | "admin";
+type GradeLevel = "K" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10" | "11" | "12";
 
 async function patchAuth0User(
   accessToken: string,
@@ -43,10 +47,15 @@ export async function GET() {
   const accessToken = tokenResult.token;
   const userMetadata = await getAuth0UserMetadata(accessToken, sub);
 
+  const role = (userMetadata.role as UserRole) || DEFAULT_ROLE;
+  const gradeLevel = userMetadata.gradeLevel as GradeLevel | undefined;
+
   return NextResponse.json({
     id: sub,
     email: email ?? "",
     name: name ?? "",
+    role,
+    ...(role === "student" ? { gradeLevel: gradeLevel || "8" } : {}),
     address: { ...DEFAULT_ADDRESS, ...(userMetadata.address as Record<string, string> | undefined) },
     preferences: { ...DEFAULT_PREFERENCES, ...(userMetadata.preferences as Record<string, unknown> | undefined) },
   });
@@ -68,10 +77,12 @@ export async function PATCH(request: NextRequest) {
     await patchAuth0User(accessToken, sub, { name: body.name });
   }
 
-  // Update user_metadata (address, preferences)
+  // Update user_metadata (address, preferences, role, gradeLevel)
   const metadataUpdate: Record<string, unknown> = {};
   if (body.address !== undefined) metadataUpdate.address = body.address;
   if (body.preferences !== undefined) metadataUpdate.preferences = body.preferences;
+  if (body.role !== undefined) metadataUpdate.role = body.role;
+  if (body.gradeLevel !== undefined) metadataUpdate.gradeLevel = body.gradeLevel;
 
   if (Object.keys(metadataUpdate).length > 0) {
     await patchAuth0UserMetadata(accessToken, sub, metadataUpdate);
@@ -79,11 +90,15 @@ export async function PATCH(request: NextRequest) {
 
   // Re-fetch to return the latest state
   const userMetadata = await getAuth0UserMetadata(accessToken, sub);
+  const role = (userMetadata.role as UserRole) || DEFAULT_ROLE;
+  const gradeLevel = userMetadata.gradeLevel as GradeLevel | undefined;
 
   return NextResponse.json({
     id: sub,
     email: email ?? "",
     name: body.name ?? session.user.name ?? "",
+    role,
+    ...(role === "student" ? { gradeLevel: gradeLevel || "8" } : {}),
     address: { ...DEFAULT_ADDRESS, ...(userMetadata.address as Record<string, string> | undefined) },
     preferences: { ...DEFAULT_PREFERENCES, ...(userMetadata.preferences as Record<string, unknown> | undefined) },
   });

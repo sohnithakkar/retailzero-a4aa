@@ -2,9 +2,14 @@
 
 import { useState, useEffect, useCallback } from "react";
 
+type UserRole = "student" | "admin";
+type GradeLevel = "K" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10" | "11" | "12";
+
 interface ProfileData {
   name: string;
   email: string;
+  role: UserRole;
+  gradeLevel?: GradeLevel;
   address: {
     street: string;
     city: string;
@@ -16,6 +21,8 @@ interface ProfileData {
     theme: "light" | "dark";
   };
 }
+
+const GRADE_LEVELS: GradeLevel[] = ["K", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
 
 interface ProfileFormProps {
   initialData: ProfileData;
@@ -78,6 +85,8 @@ export function ProfileForm({ initialData, onSave }: ProfileFormProps) {
     try {
       await onSave({
         name: form.name,
+        role: form.role,
+        ...(form.role === "student" ? { gradeLevel: form.gradeLevel } : {}),
         address: form.address,
         preferences: form.preferences,
       });
@@ -108,6 +117,41 @@ export function ProfileForm({ initialData, onSave }: ProfileFormProps) {
           disabled
           className="mt-1 flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm"
         />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-sm font-medium">Role</label>
+          <select
+            value={form.role}
+            onChange={(e) =>
+              setForm({ ...form, role: e.target.value as UserRole })
+            }
+            className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option value="student">Student</option>
+            <option value="admin">Administrator</option>
+          </select>
+        </div>
+
+        {form.role === "student" && (
+          <div>
+            <label className="text-sm font-medium">Grade Level</label>
+            <select
+              value={form.gradeLevel || "8"}
+              onChange={(e) =>
+                setForm({ ...form, gradeLevel: e.target.value as GradeLevel })
+              }
+              className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              {GRADE_LEVELS.map((grade) => (
+                <option key={grade} value={grade}>
+                  {grade === "K" ? "Kindergarten" : `Grade ${grade}`}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       <fieldset className="space-y-3">

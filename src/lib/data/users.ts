@@ -15,10 +15,18 @@ export interface UserPreferences {
   theme: "light" | "dark";
 }
 
+export type UserRole = "student" | "admin";
+
+export type GradeLevel =
+  | "K" | "1" | "2" | "3" | "4" | "5" | "6"
+  | "7" | "8" | "9" | "10" | "11" | "12";
+
 export interface User {
   id: string;
   email: string;
   name: string;
+  role: UserRole;
+  gradeLevel?: GradeLevel; // Only for students
   address: UserAddress;
   preferences: UserPreferences;
 }
@@ -43,12 +51,20 @@ export function getUserByEmail(email: string): User | undefined {
   return readUsers().find((u) => u.email === email);
 }
 
-export function createUser(id: string, email: string, name: string): User {
+export function createUser(
+  id: string,
+  email: string,
+  name: string,
+  role: UserRole = "student",
+  gradeLevel?: GradeLevel
+): User {
   const users = readUsers();
   const user: User = {
     id,
     email,
     name,
+    role,
+    ...(role === "student" && gradeLevel ? { gradeLevel } : {}),
     address: { street: "", city: "", state: "", zip: "" },
     preferences: { newsletter: false, theme: "light" },
   };
