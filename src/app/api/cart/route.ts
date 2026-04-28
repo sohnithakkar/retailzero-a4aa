@@ -7,7 +7,6 @@ import {
   setCachedCart,
   addOrderAndClearCart,
 } from "@/lib/auth0/user-cache";
-import { addOrderDocument } from "@/lib/fga/order-store";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -114,9 +113,8 @@ export async function POST(request: NextRequest) {
       placedAt: new Date().toISOString(),
     };
 
+    // addOrderAndClearCart also calls addOrderDocument internally to write FGA tuples
     addOrderAndClearCart(auth.accessToken, auth.userId, order);
-    // Index in FGA-backed document store (background)
-    addOrderDocument(order, auth.userId).catch(() => {});
     return NextResponse.json({ orderId, total });
   }
 

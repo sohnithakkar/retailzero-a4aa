@@ -44,41 +44,63 @@ export async function addOrderDocument(
   order: Order,
   userId: string
 ): Promise<void> {
-  // Idempotent — skip if already indexed
-  if (store.has(order.orderId)) return;
+  const alreadyInStore = store.has(order.orderId);
 
-  const doc: OrderDocument = {
-    id: order.orderId,
-    userId,
-    items: order.items,
-    total: order.total,
-    placedAt: order.placedAt,
-    summary: buildSummary(order),
-  };
+  // Always add/update the document in the in-memory store
+  if (!alreadyInStore) {
+    const doc: OrderDocument = {
+      id: order.orderId,
+      userId,
+      items: order.items,
+      total: order.total,
+      placedAt: order.placedAt,
+      summary: buildSummary(order),
+    };
+    store.set(order.orderId, doc);
+  }
 
-  store.set(order.orderId, doc);
-
-  // Write FGA tuple: user:{userId} is owner of order:{orderId}
+  // Always attempt to write FGA tuple (idempotent on FGA side)
+  // user:{userId} is owner of order:{orderId}
   try {
     const fgaClient = buildOpenFgaClient();
-    await fgaClient.write(
-      {
-        writes: [
-          {
-            user: `user:${userId}`,
-            relation: "owner",
-            object: `order:${order.orderId}`,
-          },
-        ],
-      },
+    console.log(
+      `[order-store] Writing FGA tuple: user:${userId} -> owner -> order:${order.orderId}`
     );
-  } catch (e) {
-    // Log but don't block — the document is still in the store.
-    // FGA checks will simply deny access until the tuple exists.
-    console.warn(
-      `[order-store] Failed to write FGA tuple for order ${order.orderId}:`,
-      (e as Error).message
+    await fgaClient.write({
+      writes: [
+        {
+          user: `user:${userId}`,
+          relation: "owner",
+          object: `order:${order.orderId}`,
+        },
+      ],
+    });
+    console.log(
+      `[order-store] Successfully wrote FGA tuple for order ${order.orderId}`
     );
+  } catch (e: unknown) {
+    const error = e as Error & { body?: string; statusCode?: number };
+    // FGA returns a 400 with "tuple already exists" if the tuple is already present
+    // This is expected and not an error condition
+    const errorBody = error.body || error.message || "";
+    if (
+      error.statusCode === 400 &&
+      errorBody.includes("cannot write a tuple which already exists")
+    ) {
+      console.log(
+        `[order-store] FGA tuple already exists for order ${order.orderId} (this is OK)`
+      );
+    } else {
+      // Log the actual error for debugging
+      console.error(
+        `[order-store] Failed to write FGA tuple for order ${order.orderId}:`,
+        {
+          message: error.message,
+          statusCode: error.statusCode,
+          body: error.body,
+        }
+      );
+    }
   }
 }
 
@@ -163,7 +185,7 @@ export function getOrderFilter(userId: string) {
     buildQuery: (doc) => ({
       user: `user:${userId}`,
       object: `order:${doc.id}`,
-      relation: "viewer",
+      relation: "owner", // Must match the relation written in addOrderDocument
     }),
   });
 }
