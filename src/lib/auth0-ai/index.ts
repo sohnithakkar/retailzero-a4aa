@@ -580,10 +580,11 @@ function getAuthorizedTools(): Record<string, Tool> {
           const timeZone = getUserTimezone() || undefined;
 
           try {
+            const eventPrefix = product.type === "course" ? "Course" : "Product Drop";
             const result = await createCalendarEvent(accessToken, {
-              summary: `Product Drop: ${product.name}`,
+              summary: `${eventPrefix}: ${product.name}`,
               description:
-                notes || `Reminder for ${product.name} drop — $${product.price}`,
+                notes || `Reminder for ${product.name} — $${product.price}`,
               startDateTime,
               endDateTime,
               timeZone,
