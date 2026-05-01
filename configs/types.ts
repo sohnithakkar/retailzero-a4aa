@@ -65,6 +65,7 @@ export interface RoleConfig {
   roles: RoleDefinition[];
   defaultRole: string;
   gradeLevels?: string[];
+  careerLevels?: string[];
 }
 
 export interface ProductTypeDefinition {

@@ -1,0 +1,48 @@
+import type { ProductTypeConfig } from "../types";
+
+export const productTypes: ProductTypeConfig = {
+  types: [
+    {
+      type: "program",
+      label: "Program",
+      labelPlural: "Programs",
+      verb: "Enroll",
+      verbPastTense: "Enrolled",
+      priceLabel: "Tuition",
+      showPrice: true,
+      additionalFields: ["duration", "format", "provider", "credential"],
+      categories: [
+        "Certificates",
+        "Associate Degrees",
+        "Bachelor's Degrees",
+        "Master's Degrees",
+        "Bootcamps",
+        "Professional Development",
+        "Foundational Skills",
+      ],
+      pageTitle: "Education Programs",
+      pageDescription: "Browse employer-sponsored education programs and degrees",
+    },
+    {
+      type: "pathway",
+      label: "Career Pathway",
+      labelPlural: "Career Pathways",
+      verb: "Start",
+      verbPastTense: "Started",
+      priceLabel: "Included",
+      showPrice: false,
+      additionalFields: ["targetRole", "programCount", "timeline"],
+      categories: [
+        "Healthcare",
+        "Technology",
+        "Business & Finance",
+        "Manufacturing",
+        "Logistics",
+        "Retail Management",
+        "Human Resources",
+      ],
+      pageTitle: "Career Pathways",
+      pageDescription: "Explore role-aligned learning pathways to advance your career",
+    },
+  ],
+};

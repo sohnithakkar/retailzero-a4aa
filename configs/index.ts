@@ -1,11 +1,13 @@
 import type { DemoConfig } from "./types";
 import { eduZeroConfig } from "./edu-zero";
 import { retailZeroConfig } from "./retail-zero";
+import { workZeroConfig } from "./work-zero";
 
 // Registry of all available demo configurations
 const configs: Record<string, DemoConfig> = {
   "edu-zero": eduZeroConfig,
   "retail-zero": retailZeroConfig,
+  "work-zero": workZeroConfig,
 };
 
 // Cache the config after first load

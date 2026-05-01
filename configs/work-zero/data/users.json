@@ -1,0 +1,46 @@
+[
+  {
+    "id": "user-1",
+    "email": "maria.garcia@example.com",
+    "name": "Maria Garcia",
+    "role": "learner",
+    "currentRole": "Retail Associate",
+    "careerGoal": "Store Manager",
+    "employer": "Target",
+    "address": {
+      "street": "456 Oak Avenue",
+      "city": "Phoenix",
+      "state": "AZ",
+      "zip": "85001"
+    }
+  },
+  {
+    "id": "user-2",
+    "email": "james.wilson@example.com",
+    "name": "James Wilson",
+    "role": "learner",
+    "currentRole": "Warehouse Associate",
+    "careerGoal": "Operations Manager",
+    "employer": "Walmart",
+    "address": {
+      "street": "789 Pine Street",
+      "city": "Dallas",
+      "state": "TX",
+      "zip": "75001"
+    }
+  },
+  {
+    "id": "user-3",
+    "email": "sarah.johnson@example.com",
+    "name": "Sarah Johnson",
+    "role": "admin",
+    "currentRole": "HR Manager",
+    "employer": "Chipotle",
+    "address": {
+      "street": "321 Corporate Blvd",
+      "city": "Denver",
+      "state": "CO",
+      "zip": "80202"
+    }
+  }
+]
