@@ -4,6 +4,7 @@ import { Auth0AI, getAccessTokenFromTokenVault } from "@auth0/ai-vercel";
 
 import { searchProducts, getProductById } from "@/lib/data/products";
 import { getUser, updateUser } from "@/lib/data/users";
+import { getAIConfig, getBranding } from "@/lib/config";
 import {
   hydrateUser,
   getCachedCart,
@@ -111,180 +112,201 @@ export function getUserGradeLevel(): string | null {
 }
 
 // ---------------------------------------------------------------------------
-// Public tools (no auth required) — safe to define at module level
+// Public tools (no auth required) — created at request time to use config
 // ---------------------------------------------------------------------------
 
-export const showProducts = tool({
-  description:
-    "Browse courses and education software solutions. Can filter by search query and/or category.",
-  inputSchema: z.object({
-    query: z
-      .string()
-      .optional()
-      .describe("Search query to filter by name or description"),
-    category: z
-      .string()
-      .optional()
-      .describe("Category filter (Mathematics, Science, History, Technology, Arts, Health, Language Arts, Administration, Assessment, Communication, Curriculum, Analytics)"),
-  }),
-  execute: async ({ query, category }) => {
-    const products = searchProducts(query, category);
-    return products.map((p) => ({
-      id: p.id,
-      name: p.name,
-      price: p.price,
-      category: p.category,
-      stock: p.stock,
-      rating: p.rating,
-      image: p.image,
-      description: p.description,
-    }));
-  },
-});
+function createShowProductsTool() {
+  const aiConfig = getAIConfig();
+  return tool({
+    description: aiConfig.toolDescriptions.showProducts,
+    inputSchema: z.object({
+      query: z
+        .string()
+        .optional()
+        .describe("Search query to filter by name or description"),
+      category: z
+        .string()
+        .optional()
+        .describe(`Category filter (${aiConfig.categories.join(", ")})`),
+    }),
+    execute: async ({ query, category }) => {
+      const products = searchProducts(query, category);
+      return products.map((p) => ({
+        id: p.id,
+        name: p.name,
+        price: p.price,
+        category: p.category,
+        stock: p.stock,
+        rating: p.rating,
+        image: p.image,
+        description: p.description,
+      }));
+    },
+  });
+}
 
-export const getProductDetails = tool({
-  description: "Get detailed information about a course or software module by ID.",
-  inputSchema: z.object({
-    productId: z.string().describe("The course or software ID to look up"),
-  }),
-  execute: async ({ productId }) => {
-    const product = getProductById(productId);
-    if (!product) return { error: "Product not found" };
-    return product;
-  },
-});
+function createGetProductDetailsTool() {
+  const aiConfig = getAIConfig();
+  return tool({
+    description: aiConfig.toolDescriptions.getProductDetails,
+    inputSchema: z.object({
+      productId: z.string().describe(`The ${aiConfig.catalogTermSingular} ID to look up`),
+    }),
+    execute: async ({ productId }) => {
+      const product = getProductById(productId);
+      if (!product) return { error: "Product not found" };
+      return product;
+    },
+  });
+}
+
+// Keep backward compatibility exports
+export const showProducts = createShowProductsTool();
+export const getProductDetails = createGetProductDetailsTool();
 
 // ---------------------------------------------------------------------------
 // Student learning tools — for students to get help with coursework
 // ---------------------------------------------------------------------------
 
-export const explainConceptTool = tool({
-  description:
-    "Explain a concept or topic to the student at their grade level. " +
-    "Use clear language, relatable examples, and break down complex ideas. " +
-    "This tool is only available to students.",
-  inputSchema: z.object({
-    topic: z
-      .string()
-      .describe("The concept or topic to explain (e.g., 'photosynthesis', 'fractions', 'the American Revolution')"),
-    subject: z
-      .string()
-      .optional()
-      .describe("The subject area (e.g., 'Math', 'Science', 'History', 'English')"),
-    additionalContext: z
-      .string()
-      .optional()
-      .describe("Any additional context about what the student is struggling with or wants to know"),
-  }),
-  execute: async ({
-    topic,
-    subject,
-    additionalContext,
-  }: {
-    topic: string;
-    subject?: string;
-    additionalContext?: string;
-  }) => {
-    const role = getUserRole();
-    if (role !== "student") {
-      return {
-        error: "This tool is only available to students.",
-        suggestion: "Admins can browse software solutions using show_products.",
-      };
-    }
-
-    const gradeLevel = getUserGradeLevel() || "8"; // Default to 8th grade if not set
-
-    // Return structured data that the LLM will use to generate the explanation
-    return {
-      requestType: "explain_concept",
-      topic,
-      subject: subject || "General",
-      gradeLevel,
-      additionalContext: additionalContext || null,
-      instructions:
-        `Generate an age-appropriate explanation of "${topic}" for a grade ${gradeLevel} student. ` +
-        "Include: 1) A simple definition, 2) A real-world example or analogy, " +
-        "3) Why it matters or how it connects to things they know. " +
-        "Keep the language accessible and encouraging.",
-    };
-  },
-});
-
-export const createPracticeProblemsTool = tool({
-  description:
-    "Generate practice problems or questions for a student to work on. " +
-    "Problems are tailored to the student's grade level. " +
-    "This tool is only available to students.",
-  inputSchema: z.object({
-    topic: z
-      .string()
-      .describe("The topic or skill to practice (e.g., 'multiplication', 'vocabulary', 'grammar')"),
-    subject: z
-      .string()
-      .describe("The subject area (e.g., 'Math', 'Science', 'History', 'English')"),
-    difficulty: z
-      .enum(["easy", "medium", "hard"])
-      .optional()
-      .default("medium")
-      .describe("Difficulty level of the problems"),
-    numberOfProblems: z
-      .number()
-      .int()
-      .min(1)
-      .max(10)
-      .optional()
-      .default(5)
-      .describe("Number of practice problems to generate (1-10)"),
-    includeAnswers: z
-      .boolean()
-      .optional()
-      .default(false)
-      .describe("Whether to include answers (set to true for self-study, false for quiz mode)"),
-  }),
-  execute: async ({
-    topic,
-    subject,
-    difficulty,
-    numberOfProblems,
-    includeAnswers,
-  }: {
-    topic: string;
-    subject: string;
-    difficulty: "easy" | "medium" | "hard";
-    numberOfProblems: number;
-    includeAnswers: boolean;
-  }) => {
-    const role = getUserRole();
-    if (role !== "student") {
-      return {
-        error: "This tool is only available to students.",
-        suggestion: "Admins can browse software solutions using show_products.",
-      };
-    }
-
-    const gradeLevel = getUserGradeLevel() || "8"; // Default to 8th grade if not set
-
-    // Return structured data that the LLM will use to generate practice problems
-    return {
-      requestType: "create_practice_problems",
+function createExplainConceptTool() {
+  const aiConfig = getAIConfig();
+  return tool({
+    description:
+      aiConfig.toolDescriptions.explainConcept ||
+      "Explain a concept or topic to the student at their grade level. " +
+      "Use clear language, relatable examples, and break down complex ideas. " +
+      "This tool is only available to students.",
+    inputSchema: z.object({
+      topic: z
+        .string()
+        .describe("The concept or topic to explain (e.g., 'photosynthesis', 'fractions', 'the American Revolution')"),
+      subject: z
+        .string()
+        .optional()
+        .describe("The subject area (e.g., 'Math', 'Science', 'History', 'English')"),
+      additionalContext: z
+        .string()
+        .optional()
+        .describe("Any additional context about what the student is struggling with or wants to know"),
+    }),
+    execute: async ({
       topic,
       subject,
-      gradeLevel,
+      additionalContext,
+    }: {
+      topic: string;
+      subject?: string;
+      additionalContext?: string;
+    }) => {
+      const role = getUserRole();
+      if (role !== "student") {
+        return {
+          error: "This tool is only available to students.",
+          suggestion: `Admins can browse ${aiConfig.catalogTerm} using show_products.`,
+        };
+      }
+
+      const gradeLevel = getUserGradeLevel() || "8"; // Default to 8th grade if not set
+
+      // Return structured data that the LLM will use to generate the explanation
+      return {
+        requestType: "explain_concept",
+        topic,
+        subject: subject || "General",
+        gradeLevel,
+        additionalContext: additionalContext || null,
+        instructions:
+          `Generate an age-appropriate explanation of "${topic}" for a grade ${gradeLevel} student. ` +
+          "Include: 1) A simple definition, 2) A real-world example or analogy, " +
+          "3) Why it matters or how it connects to things they know. " +
+          "Keep the language accessible and encouraging.",
+      };
+    },
+  });
+}
+
+export const explainConceptTool = createExplainConceptTool();
+
+function makePracticeProblemsTool() {
+  const aiConfig = getAIConfig();
+  return tool({
+    description:
+      aiConfig.toolDescriptions.createPracticeProblems ||
+      "Generate practice problems or questions for a student to work on. " +
+      "Problems are tailored to the student's grade level. " +
+      "This tool is only available to students.",
+    inputSchema: z.object({
+      topic: z
+        .string()
+        .describe("The topic or skill to practice (e.g., 'multiplication', 'vocabulary', 'grammar')"),
+      subject: z
+        .string()
+        .describe("The subject area (e.g., 'Math', 'Science', 'History', 'English')"),
+      difficulty: z
+        .enum(["easy", "medium", "hard"])
+        .optional()
+        .default("medium")
+        .describe("Difficulty level of the problems"),
+      numberOfProblems: z
+        .number()
+        .int()
+        .min(1)
+        .max(10)
+        .optional()
+        .default(5)
+        .describe("Number of practice problems to generate (1-10)"),
+      includeAnswers: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe("Whether to include answers (set to true for self-study, false for quiz mode)"),
+    }),
+    execute: async ({
+      topic,
+      subject,
       difficulty,
       numberOfProblems,
       includeAnswers,
-      instructions:
-        `Generate ${numberOfProblems} ${difficulty} practice problems about "${topic}" in ${subject} ` +
-        `for a grade ${gradeLevel} student. ` +
-        (includeAnswers
-          ? "Include the answers after each problem."
-          : "Do NOT include answers — let the student try first.") +
-        " Make problems progressively build on each other when possible. " +
-        "Use encouraging language and provide clear instructions for each problem.",
-    };
-  },
-});
+    }: {
+      topic: string;
+      subject: string;
+      difficulty: "easy" | "medium" | "hard";
+      numberOfProblems: number;
+      includeAnswers: boolean;
+    }) => {
+      const role = getUserRole();
+      if (role !== "student") {
+        return {
+          error: "This tool is only available to students.",
+          suggestion: `Admins can browse ${aiConfig.catalogTerm} using show_products.`,
+        };
+      }
+
+      const gradeLevel = getUserGradeLevel() || "8"; // Default to 8th grade if not set
+
+      // Return structured data that the LLM will use to generate practice problems
+      return {
+        requestType: "create_practice_problems",
+        topic,
+        subject,
+        gradeLevel,
+        difficulty,
+        numberOfProblems,
+        includeAnswers,
+        instructions:
+          `Generate ${numberOfProblems} ${difficulty} practice problems about "${topic}" in ${subject} ` +
+          `for a grade ${gradeLevel} student. ` +
+          (includeAnswers
+            ? "Include the answers after each problem."
+            : "Do NOT include answers — let the student try first.") +
+          " Make problems progressively build on each other when possible. " +
+          "Use encouraging language and provide clear instructions for each problem.",
+      };
+    },
+  });
+}
+
+export const createPracticeProblemsTool = makePracticeProblemsTool();
 
 // ---------------------------------------------------------------------------
 // Session tools — no Token Vault required
@@ -307,246 +329,286 @@ function enrichCart(items: { productId: string; quantity: number }[]) {
   return { items: enriched, total: Math.round(total * 100) / 100 };
 }
 
-const viewCartTool = tool({
-  description:
-    "View courses and solutions in the enrollment cart. Do not ask the user for their userId — it is provided automatically.",
-  inputSchema: z.object({
-    userId: z
-      .string()
-      .optional()
-      .default("guest")
-      .describe("The user ID (provided automatically, do not ask the user)"),
-  }),
-  execute: async ({ userId }: { userId: string }) => {
-    if (userId === "guest") {
-      return enrichCart(getGuestCartItems());
-    }
-    try {
-      const accessToken = getAuthAccessToken();
-      if (!accessToken) return { error: "Not authenticated" };
-      await hydrateUser(accessToken, userId);
-      return enrichCart(getCachedCart(userId).items);
-    } catch (e) {
-      return { error: (e as Error).message };
-    }
-  },
-});
-
-const addToCartTool = tool({
-  description:
-    "Add a course or software solution to the enrollment cart. If already in the cart, increases the quantity. Do not ask the user for their userId — it is provided automatically.",
-  inputSchema: z.object({
-    userId: z
-      .string()
-      .optional()
-      .default("guest")
-      .describe("The user ID (provided automatically, do not ask the user)"),
-    productId: z.string().describe("The course or software ID to add"),
-    quantity: z
-      .number()
-      .int()
-      .positive()
-      .optional()
-      .default(1)
-      .describe("Quantity to add (defaults to 1)"),
-  }),
-  execute: async ({
-    userId,
-    productId,
-    quantity,
-  }: {
-    userId: string;
-    productId: string;
-    quantity: number;
-  }) => {
-    const product = getProductById(productId);
-    if (!product) return { error: "Product not found" };
-
-    if (userId === "guest") {
-      const items = addToGuestCart(productId, quantity);
-      return enrichCart(items);
-    }
-
-    try {
-      const accessToken = getAuthAccessToken();
-      if (!accessToken) return { error: "Not authenticated" };
-      await hydrateUser(accessToken, userId);
-      const cart = getCachedCart(userId);
-      const existing = cart.items.find((i) => i.productId === productId);
-      if (existing) {
-        existing.quantity += quantity;
-      } else {
-        cart.items.push({
-          productId,
-          quantity,
-          addedAt: new Date().toISOString(),
-        });
+function createViewCartTool() {
+  const aiConfig = getAIConfig();
+  return tool({
+    description:
+      `${aiConfig.toolDescriptions.viewCart} Do not ask the user for their userId — it is provided automatically.`,
+    inputSchema: z.object({
+      userId: z
+        .string()
+        .optional()
+        .default("guest")
+        .describe("The user ID (provided automatically, do not ask the user)"),
+    }),
+    execute: async ({ userId }: { userId: string }) => {
+      if (userId === "guest") {
+        return enrichCart(getGuestCartItems());
       }
-      cart.updatedAt = new Date().toISOString();
-      setCachedCart(accessToken, userId, cart);
-      return enrichCart(cart.items);
-    } catch (e) {
-      return { error: (e as Error).message };
-    }
-  },
-});
-
-const prepareCheckoutTool = tool({
-  description:
-    "Preview the enrollment cart before completing registration. Returns the cart summary with items and total. " +
-    "Call this BEFORE calling checkout_cart so the user knows what they are enrolling in and that a push notification will be sent for approval. " +
-    "Do not ask the user for their userId — it is provided automatically.",
-  inputSchema: z.object({
-    userId: z
-      .string()
-      .optional()
-      .default("guest")
-      .describe("The user ID (provided automatically, do not ask the user)"),
-  }),
-  execute: async ({ userId }: { userId: string }) => {
-    if (userId === "guest") {
-      return { error: "You must be logged in to checkout." };
-    }
-    try {
-      const accessToken = getAuthAccessToken();
-      if (!accessToken) return { error: "Not authenticated" };
-      await hydrateUser(accessToken, userId);
-      const cart = getCachedCart(userId);
-      if (cart.items.length === 0) {
-        return { error: "Cart is empty" };
+      try {
+        const accessToken = getAuthAccessToken();
+        if (!accessToken) return { error: "Not authenticated" };
+        await hydrateUser(accessToken, userId);
+        return enrichCart(getCachedCart(userId).items);
+      } catch (e) {
+        return { error: (e as Error).message };
       }
-      const enriched = enrichCart(cart.items);
-      return {
-        ...enriched,
-        message:
-          "A push notification will be sent to the user's device for approval. " +
-          "Tell the user to check their device, then call checkout_cart to proceed.",
-      };
-    } catch (e) {
-      return { error: (e as Error).message };
-    }
-  },
-});
+    },
+  });
+}
 
-const viewProfileTool = tool({
-  description:
-    "View the current student or educator profile information. Do not ask the user for their userId — it is provided automatically.",
-  inputSchema: z.object({
-    userId: z
-      .string()
-      .optional()
-      .default("guest")
-      .describe("The user ID (provided automatically, do not ask the user)"),
-  }),
-  execute: async ({ userId }: { userId: string }) => {
-    const user = getUser(userId);
-    if (!user) return { error: "User not found" };
-    return user;
-  },
-});
+const viewCartTool = createViewCartTool();
 
-const redirectToLoginTool = tool({
-  description:
-    "Redirect the user to the login page. Use this when a guest user asks to log in, sign in, or authenticate. " +
-    "This will redirect them to the login page and return them back to EduZero after authentication.",
-  inputSchema: z.object({
-    returnTo: z
-      .string()
-      .optional()
-      .default("/")
-      .describe("The page to return to after login (defaults to home)"),
-  }),
-  execute: async ({ returnTo }: { returnTo: string }) => {
-    return {
-      redirect: true,
-      url: `/auth/login?returnTo=${encodeURIComponent(returnTo)}`,
-      message: "Redirecting to login page...",
-    };
-  },
-});
+function createAddToCartTool() {
+  const aiConfig = getAIConfig();
+  return tool({
+    description:
+      `${aiConfig.toolDescriptions.addToCart} If already in the ${aiConfig.cartTerm}, increases the quantity. Do not ask the user for their userId — it is provided automatically.`,
+    inputSchema: z.object({
+      userId: z
+        .string()
+        .optional()
+        .default("guest")
+        .describe("The user ID (provided automatically, do not ask the user)"),
+      productId: z.string().describe(`The ${aiConfig.catalogTermSingular} ID to add`),
+      quantity: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .default(1)
+        .describe("Quantity to add (defaults to 1)"),
+    }),
+    execute: async ({
+      userId,
+      productId,
+      quantity,
+    }: {
+      userId: string;
+      productId: string;
+      quantity: number;
+    }) => {
+      const product = getProductById(productId);
+      if (!product) return { error: "Product not found" };
 
-const redirectToGoogleConnectTool = tool({
-  description:
-    "Redirect the user to connect their Google account. Use this when Token Vault authorization is required for Google Calendar features. " +
-    "Redirects the user to the Google OAuth consent page. After connecting, they return to the store.",
-  inputSchema: z.object({}),
-  execute: async () => {
-    return {
-      redirect: true,
-      url: "/connect/google",
-      message: "Redirecting to connect your Google account...",
-    };
-  },
-});
-
-const searchOrdersTool = tool({
-  description:
-    "Search enrollment history and past registrations. Returns past enrollments filtered by fine-grained authorization. " +
-    "Use this to answer questions about courses taken, enrollment dates, etc. " +
-    "Do not ask the user for their userId — it is provided automatically.",
-  inputSchema: z.object({
-    userId: z
-      .string()
-      .describe("The user ID (provided automatically, do not ask the user)"),
-    query: z
-      .string()
-      .optional()
-      .describe(
-        "Optional search query to filter orders by product name or summary"
-      ),
-  }),
-  execute: async ({ userId, query }: { userId: string; query?: string }) => {
-    if (!userId || userId === "guest") {
-      return { error: "You must be logged in to search order history." };
-    }
-
-    try {
-      // Get candidate documents (optionally filtered by text query)
-      const candidates = searchOrderDocuments(query);
-
-      if (candidates.length === 0) {
-        return { orders: [], message: "No orders found." };
+      if (userId === "guest") {
+        const items = addToGuestCart(productId, quantity);
+        return enrichCart(items);
       }
 
-      // Apply FGA filter — only returns orders the user is authorized to view
-      const filter = getOrderFilter(userId);
-      let authorized = await filter.filter(candidates);
-
-      // Self-healing: check for orders in user_metadata that FGA denied
-      // (missing tuples). Repair them and re-filter once.
-      const cachedOrders = getCachedOrders(userId);
-      const authorizedIds = new Set(authorized.map((d) => d.id));
-      const missingOrders = cachedOrders.filter(
-        (o) => !authorizedIds.has(o.orderId)
-      );
-
-      if (missingOrders.length > 0) {
-        const repairedIds = await repairMissingTuples(missingOrders, userId);
-        if (repairedIds.length > 0) {
-          // Re-filter only the repaired candidates to avoid redundant checks
-          const repairedCandidates = candidates.filter((d) =>
-            repairedIds.includes(d.id)
-          );
-          const newlyAuthorized = await filter.filter(repairedCandidates);
-          authorized = [...authorized, ...newlyAuthorized];
+      try {
+        const accessToken = getAuthAccessToken();
+        if (!accessToken) return { error: "Not authenticated" };
+        await hydrateUser(accessToken, userId);
+        const cart = getCachedCart(userId);
+        const existing = cart.items.find((i) => i.productId === productId);
+        if (existing) {
+          existing.quantity += quantity;
+        } else {
+          cart.items.push({
+            productId,
+            quantity,
+            addedAt: new Date().toISOString(),
+          });
         }
+        cart.updatedAt = new Date().toISOString();
+        setCachedCart(accessToken, userId, cart);
+        return enrichCart(cart.items);
+      } catch (e) {
+        return { error: (e as Error).message };
+      }
+    },
+  });
+}
+
+const addToCartTool = createAddToCartTool();
+
+function createPrepareCheckoutTool() {
+  const aiConfig = getAIConfig();
+  return tool({
+    description:
+      `${aiConfig.toolDescriptions.prepareCheckout} Returns the ${aiConfig.cartTerm} summary with items and total. ` +
+      `Call this BEFORE calling checkout_cart so the user knows what they are ${aiConfig.primaryAction}ing and that a push notification will be sent for approval. ` +
+      "Do not ask the user for their userId — it is provided automatically.",
+    inputSchema: z.object({
+      userId: z
+        .string()
+        .optional()
+        .default("guest")
+        .describe("The user ID (provided automatically, do not ask the user)"),
+    }),
+    execute: async ({ userId }: { userId: string }) => {
+      if (userId === "guest") {
+        return { error: `You must be logged in to ${aiConfig.primaryAction}.` };
+      }
+      try {
+        const accessToken = getAuthAccessToken();
+        if (!accessToken) return { error: "Not authenticated" };
+        await hydrateUser(accessToken, userId);
+        const cart = getCachedCart(userId);
+        if (cart.items.length === 0) {
+          return { error: "Cart is empty" };
+        }
+        const enriched = enrichCart(cart.items);
+        return {
+          ...enriched,
+          message:
+            "A push notification will be sent to the user's device for approval. " +
+            "Tell the user to check their device, then call checkout_cart to proceed.",
+        };
+      } catch (e) {
+        return { error: (e as Error).message };
+      }
+    },
+  });
+}
+
+const prepareCheckoutTool = createPrepareCheckoutTool();
+
+function createViewProfileTool() {
+  const aiConfig = getAIConfig();
+  return tool({
+    description:
+      `${aiConfig.toolDescriptions.viewProfile} Do not ask the user for their userId — it is provided automatically.`,
+    inputSchema: z.object({
+      userId: z
+        .string()
+        .optional()
+        .default("guest")
+        .describe("The user ID (provided automatically, do not ask the user)"),
+    }),
+    execute: async ({ userId }: { userId: string }) => {
+      const user = getUser(userId);
+      if (!user) return { error: "User not found" };
+      return user;
+    },
+  });
+}
+
+const viewProfileTool = createViewProfileTool();
+
+function createRedirectToLoginTool() {
+  const branding = getBranding();
+  return tool({
+    description:
+      "Redirect the user to the login page. Use this when a guest user asks to log in, sign in, or authenticate. " +
+      `This will redirect them to the login page and return them back to ${branding.appName} after authentication.`,
+    inputSchema: z.object({
+      returnTo: z
+        .string()
+        .optional()
+        .default("/")
+        .describe("The page to return to after login (defaults to home)"),
+    }),
+    execute: async ({ returnTo }: { returnTo: string }) => {
+      return {
+        redirect: true,
+        url: `/auth/login?returnTo=${encodeURIComponent(returnTo)}`,
+        message: "Redirecting to login page...",
+      };
+    },
+  });
+}
+
+const redirectToLoginTool = createRedirectToLoginTool();
+
+function createRedirectToGoogleConnectTool() {
+  const branding = getBranding();
+  return tool({
+    description:
+      "Redirect the user to connect their Google account. Use this when Token Vault authorization is required for Google Calendar features. " +
+      `Redirects the user to the Google OAuth consent page. After connecting, they return to ${branding.appName}.`,
+    inputSchema: z.object({}),
+    execute: async () => {
+      return {
+        redirect: true,
+        url: "/connect/google",
+        message: "Redirecting to connect your Google account...",
+      };
+    },
+  });
+}
+
+const redirectToGoogleConnectTool = createRedirectToGoogleConnectTool();
+
+function createSearchOrdersTool() {
+  const aiConfig = getAIConfig();
+  return tool({
+    description:
+      `${aiConfig.toolDescriptions.searchOrders} ` +
+      "Do not ask the user for their userId — it is provided automatically.",
+    inputSchema: z.object({
+      userId: z
+        .string()
+        .describe("The user ID (provided automatically, do not ask the user)"),
+      query: z
+        .string()
+        .optional()
+        .describe(
+          `Optional search query to filter ${aiConfig.orderTerm}s by ${aiConfig.catalogTermSingular} name or summary`
+        ),
+    }),
+    execute: async ({ userId, query }: { userId: string; query?: string }) => {
+      if (!userId || userId === "guest") {
+        return { error: `You must be logged in to search ${aiConfig.orderTerm} history.` };
       }
 
-      return {
-        orders: authorized.map((doc) => ({
-          orderId: doc.id,
-          items: doc.items,
-          total: doc.total,
-          placedAt: doc.placedAt,
-          summary: doc.summary,
-        })),
-        count: authorized.length,
-      };
-    } catch (e) {
-      return { error: (e as Error).message };
-    }
-  },
-});
+      try {
+        // Ensure user's orders are hydrated into the in-memory store first
+        const accessToken = getAuthAccessToken();
+        if (accessToken) {
+          await hydrateUser(accessToken, userId);
+        }
+
+        // Get candidate documents (optionally filtered by text query)
+        const candidates = searchOrderDocuments(query);
+
+        if (candidates.length === 0) {
+          return { orders: [], message: `No ${aiConfig.orderTerm}s found.` };
+        }
+
+        // Apply FGA filter — only returns orders the user is authorized to view
+        const filter = getOrderFilter(userId);
+        let authorized = await filter.filter(candidates);
+
+        // Self-healing: check for orders in user_metadata that FGA denied
+        // (missing tuples). Repair them and re-filter once.
+        const cachedOrders = getCachedOrders(userId);
+        const authorizedIds = new Set(authorized.map((d) => d.id));
+        const missingOrders = cachedOrders.filter(
+          (o) => !authorizedIds.has(o.orderId)
+        );
+
+        if (missingOrders.length > 0) {
+          const repairedIds = await repairMissingTuples(missingOrders, userId);
+          if (repairedIds.length > 0) {
+            // Re-filter only the repaired candidates to avoid redundant checks
+            const repairedCandidates = candidates.filter((d) =>
+              repairedIds.includes(d.id)
+            );
+            const newlyAuthorized = await filter.filter(repairedCandidates);
+            authorized = [...authorized, ...newlyAuthorized];
+          }
+        }
+
+        return {
+          orders: authorized.map((doc) => ({
+            orderId: doc.id,
+            items: doc.items,
+            total: doc.total,
+            placedAt: doc.placedAt,
+            summary: doc.summary,
+          })),
+          count: authorized.length,
+        };
+      } catch (e) {
+        return { error: (e as Error).message };
+      }
+    },
+  });
+}
+
+const searchOrdersTool = createSearchOrdersTool();
 
 // ---------------------------------------------------------------------------
 // Lazily-initialized Auth0AI instance and authorized tools.
@@ -562,15 +624,14 @@ function getAuthorizedTools(): Record<string, Tool> {
 
   const tools: Record<string, Tool> = {};
   const auth0AI = new Auth0AI();
+  const aiConfig = getAIConfig();
 
   // -- CIBA: checkout with push approval --
   try {
     const withCIBA = auth0AI.withAsyncAuthorization(getCIBAParams());
     tools.checkout_cart = withCIBA(
       tool({
-        description:
-          "Complete enrollment and confirm registration. Returns a confirmation with enrollment ID and total. " +
-          "Enrollments require user approval on their device via push notification.",
+        description: aiConfig.toolDescriptions.checkoutCart,
         inputSchema: z.object({
           userId: z.string().describe("The user ID whose cart to checkout"),
         }),
@@ -584,7 +645,7 @@ function getAuthorizedTools(): Record<string, Tool> {
             await hydrateUser(accessToken, userId);
             const cart = getCachedCart(userId);
             if (cart.items.length === 0) {
-              return { error: "Cart is empty" };
+              return { error: `${aiConfig.cartTerm} is empty` };
             }
 
             // Compute total and build order items
@@ -609,7 +670,7 @@ function getAuthorizedTools(): Record<string, Tool> {
             }
             total = Math.round(total * 100) / 100;
 
-            const orderId = `order-${Date.now()}`;
+            const orderId = `${aiConfig.orderTerm}-${Date.now()}`;
             const order = {
               orderId,
               items: orderItems,
@@ -635,9 +696,7 @@ function getAuthorizedTools(): Record<string, Tool> {
     const withFGA = fgaAI.withFGA(getFGAParams());
     tools.edit_profile = withFGA(
       tool({
-        description:
-          "Update student or educator profile information (name, address, preferences). " +
-          "Only the profile owner or an admin can edit a profile.",
+        description: aiConfig.toolDescriptions.editProfile,
         inputSchema: z.object({
           userId: z.string().describe("The user ID whose profile to update"),
           updates: z
@@ -688,19 +747,15 @@ function getAuthorizedTools(): Record<string, Tool> {
     });
     tools.set_calendar_reminder = protect(
       tool({
-        description:
-          "Set reminders for classes, assignments, or deadlines. " +
-          "Creates a calendar event on the user's Google Calendar. " +
-          "If this tool fails with an authorization error, the user needs to connect their Google account " +
-          "by visiting /connect/google — tell them to click the link and authorize, then try again.",
+        description: aiConfig.toolDescriptions.setCalendarReminder,
         inputSchema: z.object({
           productId: z
             .string()
-            .describe("The product ID to set a reminder for"),
+            .describe(`The ${aiConfig.catalogTermSingular} ID to set a reminder for`),
           dropDate: z
             .string()
             .describe(
-              "ISO 8601 date-time for the product drop (e.g. 2025-01-15T10:00:00-05:00)"
+              `ISO 8601 date-time for the ${aiConfig.calendarEventTerm} (e.g. 2025-01-15T10:00:00-05:00)`
             ),
           notes: z
             .string()
@@ -726,7 +781,7 @@ function getAuthorizedTools(): Record<string, Tool> {
             throw vaultErr;
           }
           const product = getProductById(productId);
-          if (!product) return { error: "Product not found" };
+          if (!product) return { error: `${aiConfig.catalogTermSingular} not found` };
 
           const startDateTime = dropDate;
           const endDateTime = new Date(
@@ -735,7 +790,7 @@ function getAuthorizedTools(): Record<string, Tool> {
           const timeZone = getUserTimezone() || undefined;
 
           try {
-            const eventPrefix = product.type === "course" ? "Course" : "Product Drop";
+            const eventPrefix = aiConfig.calendarEventPrefix || (product.type === "course" ? "Course" : "Product Drop");
             const result = await createCalendarEvent(accessToken, {
               summary: `${eventPrefix}: ${product.name}`,
               description:

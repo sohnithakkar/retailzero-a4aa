@@ -1,0 +1,68 @@
+[
+  {
+    "id": "user-1",
+    "email": "jane@example.com",
+    "name": "Jane Smith",
+    "role": "student",
+    "gradeLevel": "10",
+    "address": {
+      "street": "123 Main St",
+      "city": "Springfield",
+      "state": "IL",
+      "zip": "62701"
+    },
+    "preferences": {
+      "newsletter": true,
+      "theme": "light"
+    }
+  },
+  {
+    "id": "user-2",
+    "email": "john@example.com",
+    "name": "John Doe",
+    "role": "admin",
+    "address": {
+      "street": "456 Oak Ave",
+      "city": "Portland",
+      "state": "OR",
+      "zip": "97201"
+    },
+    "preferences": {
+      "newsletter": false,
+      "theme": "dark"
+    }
+  },
+  {
+    "id": "user-3",
+    "email": "emma@example.com",
+    "name": "Emma Johnson",
+    "role": "student",
+    "gradeLevel": "7",
+    "address": {
+      "street": "789 Elm St",
+      "city": "Austin",
+      "state": "TX",
+      "zip": "78701"
+    },
+    "preferences": {
+      "newsletter": true,
+      "theme": "light"
+    }
+  },
+  {
+    "id": "user-4",
+    "email": "michael@example.com",
+    "name": "Michael Chen",
+    "role": "admin",
+    "address": {
+      "street": "321 Pine Rd",
+      "city": "Seattle",
+      "state": "WA",
+      "zip": "98101"
+    },
+    "preferences": {
+      "newsletter": true,
+      "theme": "light"
+    }
+  }
+]

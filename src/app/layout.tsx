@@ -5,12 +5,15 @@ import { AuthProvider } from "@/lib/auth/provider";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { ChatWidget } from "@/components/chat/chat-widget";
+import { getBranding } from "@/lib/config";
 
 const inter = Inter({ subsets: ["latin"] });
 
+const branding = getBranding();
+
 export const metadata: Metadata = {
-  title: "EduZero",
-  description: "AI-powered education platform with enterprise-grade security",
+  title: branding.appName,
+  description: branding.description,
 };
 
 export default function RootLayout({
@@ -19,7 +22,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      style={{ "--primary": branding.primaryColorHSL } as React.CSSProperties}
+    >
       <body className={inter.className} suppressHydrationWarning>
         <AuthProvider>
           <div className="flex min-h-screen flex-col">

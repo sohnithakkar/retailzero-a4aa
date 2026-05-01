@@ -1,7 +1,10 @@
 import fs from "fs";
 import path from "path";
+import { getDataPath } from "../config";
 
-const dataDir = path.join(process.cwd(), "data");
+function getDataDir(): string {
+  return path.join(process.cwd(), getDataPath());
+}
 
 export interface UserAddress {
   street: string;
@@ -32,13 +35,13 @@ export interface User {
 }
 
 function readUsers(): User[] {
-  const raw = fs.readFileSync(path.join(dataDir, "users.json"), "utf-8");
+  const raw = fs.readFileSync(path.join(getDataDir(), "users.json"), "utf-8");
   return JSON.parse(raw);
 }
 
 function writeUsers(users: User[]): void {
   fs.writeFileSync(
-    path.join(dataDir, "users.json"),
+    path.join(getDataDir(), "users.json"),
     JSON.stringify(users, null, 2)
   );
 }

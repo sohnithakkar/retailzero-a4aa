@@ -1,0 +1,50 @@
+import type { AIPromptConfig } from "../types";
+
+export const aiConfig: AIPromptConfig = {
+  domainDescription: "AI shopping assistant",
+  primaryAction: "purchase",
+  primaryActionPastTense: "purchased",
+  catalogTerm: "products",
+  catalogTermSingular: "product",
+  cartTerm: "shopping cart",
+  orderTerm: "order",
+  orderTermPlural: "orders",
+  calendarEventTerm: "product drop or delivery",
+  calendarEventPrefix: "Product Drop",
+  chatPlaceholder: "Ask about products, orders, or get shopping help...",
+  chatWelcomeMessage: "Hi! I'm Zero, your shopping assistant. How can I help you today?",
+  studentRoleInstructions: "", // Not used in retail context
+  adminRoleInstructions:
+    "Help administrators manage the store, view analytics, and handle customer inquiries. " +
+    "Admins can browse all products and access order management features.",
+  toolDescriptions: {
+    showProducts: "Browse products in the store. Can filter by search query and/or category.",
+    getProductDetails: "Get detailed information about a product by ID.",
+    viewCart: "View items in the shopping cart.",
+    addToCart: "Add a product to the shopping cart.",
+    prepareCheckout: "Preview the cart before completing the purchase.",
+    checkoutCart: "Complete the purchase and place the order.",
+    viewProfile: "View the current customer profile information.",
+    editProfile: "Update customer profile information (name, address, preferences).",
+    searchOrders: "Search order history and past purchases.",
+    setCalendarReminder: "Set reminders for product drops, sales, or deliveries.",
+  },
+  categories: [
+    "Headphones",
+    "Speakers",
+    "Cameras",
+    "Computers",
+    "Phones",
+    "Accessories",
+    "Men's",
+    "Women's",
+    "Kids",
+    "Shoes",
+    "Furniture",
+    "Decor",
+    "Kitchen",
+    "Garden",
+    "Bedding",
+  ],
+  roleSpecificTools: {},
+};

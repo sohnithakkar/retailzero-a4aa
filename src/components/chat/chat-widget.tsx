@@ -10,8 +10,10 @@ import { getGuestCart, addGuestCartItem } from "@/lib/cart/guest-cart";
 import { mutate } from "swr";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { getAIConfig, getConfig } from "@/lib/config";
 
-const CHAT_STORAGE_KEY = "eduzero-chat";
+const config = getConfig();
+const CHAT_STORAGE_KEY = `${config.id}-chat`;
 
 /** Neutralize redirect tool outputs so restored messages don't re-trigger redirects. */
 function sanitizeRedirectResults(messages: UIMessage[]): UIMessage[] {
@@ -765,7 +767,7 @@ function ChatPanel({ onClose, onClear }: { onClose: () => void; onClear: () => v
        <div className="space-y-4">
         {messages.length === 0 && (
           <p className="text-sm text-muted-foreground text-center mt-8">
-            Hi! I&apos;m Zero, your education assistant. How can I help you today?
+            {getAIConfig().chatWelcomeMessage}
           </p>
         )}
         {messages.map((msg) => {
@@ -964,7 +966,7 @@ function ChatPanel({ onClose, onClear }: { onClose: () => void; onClear: () => v
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about courses, enrollment, or school tools..."
+            placeholder={getAIConfig().chatPlaceholder}
             className="flex-1 h-12 rounded-md border border-input bg-background px-4 py-3 text-sm"
             disabled={isLoading}
           />

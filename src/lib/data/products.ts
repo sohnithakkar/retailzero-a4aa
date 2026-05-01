@@ -1,7 +1,10 @@
 import fs from "fs";
 import path from "path";
+import { getDataPath } from "../config";
 
-const dataDir = path.join(process.cwd(), "data");
+function getDataDir(): string {
+  return path.join(process.cwd(), getDataPath());
+}
 
 export interface Product {
   id: string;
@@ -18,7 +21,7 @@ export interface Product {
 }
 
 function readProducts(): Product[] {
-  const raw = fs.readFileSync(path.join(dataDir, "products.json"), "utf-8");
+  const raw = fs.readFileSync(path.join(getDataDir(), "products.json"), "utf-8");
   return JSON.parse(raw);
 }
 

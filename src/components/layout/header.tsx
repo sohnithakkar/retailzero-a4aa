@@ -4,11 +4,47 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/provider";
 import { getGuestCart } from "@/lib/cart/guest-cart";
-import { ShoppingCart, User, LogIn, LogOut, GraduationCap, Package, BookOpen, Laptop } from "lucide-react";
+import {
+  ShoppingCart,
+  User,
+  LogIn,
+  LogOut,
+  GraduationCap,
+  ShoppingBag,
+  Heart,
+  Building2,
+  Package,
+  BookOpen,
+  Laptop,
+  Grid,
+} from "lucide-react";
+import { getBranding, getNavigation } from "@/lib/config";
+
+const logoIconMap = {
+  GraduationCap,
+  ShoppingBag,
+  Heart,
+  Building2,
+};
+
+const navIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  ShoppingCart,
+  User,
+  LogIn,
+  LogOut,
+  Package,
+  BookOpen,
+  Laptop,
+  Grid,
+};
 
 export function Header() {
   const { user, isAuthenticated, isLoading: authLoading, logout } = useAuth();
   const [itemCount, setItemCount] = useState(0);
+  const branding = getBranding();
+  const navigation = getNavigation();
+
+  const LogoIcon = logoIconMap[branding.logoIcon as keyof typeof logoIconMap];
 
   const refreshCount = useCallback(async () => {
     if (authLoading) return;
@@ -55,27 +91,32 @@ export function Header() {
     <header className="border-b border-gray-200 bg-white text-gray-900">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2 font-bold text-xl">
-          <GraduationCap className="h-6 w-6 text-[#0066CC]" />
+          <LogoIcon className="h-6 w-6" style={{ color: branding.primaryColor }} />
           <span>
-            Edu<span className="text-[#0066CC]">Zero</span>
+            {branding.appNameSplit.prefix}
+            <span style={{ color: branding.primaryColor }}>
+              {branding.appNameSplit.highlight}
+            </span>
           </span>
         </Link>
 
         <nav className="flex items-center gap-6">
-          <Link
-            href="/courses"
-            className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1"
-          >
-            <BookOpen className="h-4 w-4" />
-            Courses
-          </Link>
-          <Link
-            href="/software"
-            className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1"
-          >
-            <Laptop className="h-4 w-4" />
-            Software
-          </Link>
+          {/* Primary Navigation */}
+          {navigation.primaryNav.map((item) => {
+            const Icon = navIconMap[item.icon];
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1"
+              >
+                {Icon && <Icon className="h-4 w-4" />}
+                {item.label}
+              </Link>
+            );
+          })}
+
+          {/* Cart (always visible) */}
           <Link
             href="/cart"
             className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1 relative"
@@ -83,27 +124,33 @@ export function Header() {
             <ShoppingCart className="h-4 w-4" />
             Cart
             {itemCount > 0 && (
-              <span className="absolute -top-2 -right-3 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#0066CC] px-1 text-[10px] font-bold text-white">
+              <span
+                className="absolute -top-2 -right-3 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
+                style={{ backgroundColor: branding.primaryColor }}
+              >
                 {itemCount > 99 ? "99+" : itemCount}
               </span>
             )}
           </Link>
+
+          {/* Authenticated Navigation */}
           {isAuthenticated ? (
             <>
-              <Link
-                href="/orders"
-                className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1"
-              >
-                <Package className="h-4 w-4" />
-                Orders
-              </Link>
-              <Link
-                href="/account"
-                className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1"
-              >
-                <User className="h-4 w-4" />
-                {user?.name || "Account"}
-              </Link>
+              {navigation.authNav
+                .filter((item) => item.requiresAuth && item.href !== "/cart")
+                .map((item) => {
+                  const Icon = navIconMap[item.icon];
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1"
+                    >
+                      {Icon && <Icon className="h-4 w-4" />}
+                      {item.label === "Account" ? user?.name || "Account" : item.label}
+                    </Link>
+                  );
+                })}
               <button
                 onClick={() => logout()}
                 className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1"
