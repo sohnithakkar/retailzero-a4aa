@@ -28,7 +28,7 @@ export const navigation: NavigationConfig = {
     },
     {
       label: "Profile",
-      href: "/profile",
+      href: "/account",
       icon: "User",
       requiresAuth: true,
     },

@@ -76,6 +76,7 @@ export interface ProductTypeDefinition {
   verbPastTense: string;
   priceLabel: string;
   showPrice: boolean;
+  showStock?: boolean;
   additionalFields: string[];
   categories: string[];
   pageTitle: string;

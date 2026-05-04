@@ -6,6 +6,7 @@ import { ArrowLeft, ShoppingCart, Star, Clock, BookOpen } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/provider";
 import { addGuestCartItem } from "@/lib/cart/guest-cart";
+import { getProductTypes } from "@/lib/config";
 
 interface Product {
   id: string;
@@ -83,6 +84,11 @@ export default function ProductDetailPage() {
   const backLink = isCourse ? "/courses" : product.type === "software" ? "/software" : "/products";
   const backLabel = isCourse ? "Back to courses" : product.type === "software" ? "Back to software" : "Back to solutions";
 
+  const productTypes = getProductTypes();
+  const productType = productTypes.types.find((t) => t.type === product.type);
+  const showStock = productType?.showStock !== false;
+  const showPrice = productType?.showPrice !== false;
+
   return (
     <div className="container mx-auto px-4 py-8">
       <Link
@@ -134,31 +140,39 @@ export default function ProductDetailPage() {
                 <span>{product.schedule}</span>
               </div>
             </div>
-          ) : (
+          ) : showPrice ? (
             <p className="mt-4 text-2xl font-bold">
               ${product.price.toFixed(2)}{product.type === "software" ? "/year" : ""}
+            </p>
+          ) : (
+            <p className="mt-4 text-lg text-muted-foreground">
+              {productType?.priceLabel || "Included"}
             </p>
           )}
 
           <p className="mt-4 text-muted-foreground">{product.description}</p>
 
-          <p className="mt-4 text-sm">
-            {isCourse ? (
+          {isCourse ? (
+            <p className="mt-4 text-sm">
               <span className="text-green-600">Open enrollment</span>
-            ) : product.stock > 0 ? (
-              <span className="text-green-600">
-                {product.type === "software" ? `${product.stock} licenses available` : `${product.stock} in stock`}
-              </span>
-            ) : (
-              <span className="text-destructive">
-                {product.type === "software" ? "Contact sales" : "Out of stock"}
-              </span>
-            )}
-          </p>
+            </p>
+          ) : showStock && product.stock !== undefined && (
+            <p className="mt-4 text-sm">
+              {product.stock > 0 ? (
+                <span className="text-green-600">
+                  {product.type === "software" ? `${product.stock} licenses available` : `${product.stock} in stock`}
+                </span>
+              ) : (
+                <span className="text-destructive">
+                  {product.type === "software" ? "Contact sales" : "Out of stock"}
+                </span>
+              )}
+            </p>
+          )}
 
           <button
             onClick={handleAddToCart}
-            disabled={adding || (!isCourse && product.stock === 0)}
+            disabled={adding || (!isCourse && showStock && product.stock === 0)}
             className="mt-6 inline-flex items-center justify-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <ShoppingCart className="h-4 w-4" />

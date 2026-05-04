@@ -10,7 +10,7 @@ import { getGuestCart, addGuestCartItem } from "@/lib/cart/guest-cart";
 import { mutate } from "swr";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { getAIConfig, getConfig } from "@/lib/config";
+import { getAIConfig, getConfig, getProductTypes } from "@/lib/config";
 
 const config = getConfig();
 const CHAT_STORAGE_KEY = `${config.id}-chat`;
@@ -220,6 +220,11 @@ function ProductDetailModal({
   onClose: () => void;
   onAddToCart?: (productId: string) => void;
 }) {
+  const productTypes = getProductTypes();
+  const productType = productTypes.types.find((t) => t.type === product.type);
+  const showStock = productType?.showStock !== false;
+  const showPrice = productType?.showPrice !== false;
+
   return (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50"
@@ -260,9 +265,13 @@ function ProductDetailModal({
             <div className="flex items-center gap-4 flex-wrap">
               {product.type === "course" ? (
                 <span className="text-2xl font-bold">{product.credits} credits</span>
-              ) : (
+              ) : showPrice ? (
                 <span className="text-2xl font-bold">
                   ${product.price.toFixed(2)}{product.type === "software" ? "/year" : ""}
+                </span>
+              ) : (
+                <span className="text-lg text-muted-foreground">
+                  {productType?.priceLabel || "Included"}
                 </span>
               )}
               {product.rating > 0 && (
@@ -277,7 +286,7 @@ function ProductDetailModal({
                     {product.schedule}
                   </span>
                 )
-              ) : product.stock !== undefined && (
+              ) : showStock && product.stock !== undefined && (
                 <span className="text-xs text-muted-foreground">
                   {product.type === "software"
                     ? (product.stock > 0 ? `${product.stock} licenses available` : "Contact sales")
@@ -298,12 +307,12 @@ function ProductDetailModal({
         <div className="p-6 pt-0">
           <button
             onClick={() => { onAddToCart?.(product.id); onClose(); }}
-            disabled={(product.type !== "course" && product.stock === 0) || !onAddToCart}
+            disabled={(product.type !== "course" && showStock && product.stock === 0) || !onAddToCart}
             className="w-full py-3 px-4 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {product.type === "course"
               ? "Enroll Now"
-              : (product.stock === 0 ? "Out of Stock" : "Add to Cart")}
+              : (showStock && product.stock === 0 ? "Out of Stock" : "Add to Cart")}
           </button>
         </div>
       </div>
@@ -384,42 +393,48 @@ function ProductCarousel({
           ref={scrollContainerRef}
           className="flex gap-1.5 overflow-x-auto pb-1 px-1 scrollbar-thin"
         >
-          {products.map((p) => (
-            <div
-              key={p.id}
-              className="flex-shrink-0 w-28 rounded-md border bg-card shadow-sm overflow-hidden cursor-pointer hover:ring-1 hover:ring-primary/40 transition-shadow"
-              onClick={() => setSelectedProduct(p)}
-            >
-              <div className="h-20 bg-muted flex items-center justify-center">
-                {p.image ? (
-                  <img
-                    src={p.image}
-                    alt={p.name}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <span className="text-muted-foreground text-[9px]">No image</span>
-                )}
-              </div>
+          {products.map((p) => {
+            const productTypes = getProductTypes();
+            const productType = productTypes.types.find((t) => t.type === p.type);
+            const showStock = productType?.showStock !== false;
+            const showPrice = productType?.showPrice !== false;
+            return (
+              <div
+                key={p.id}
+                className="flex-shrink-0 w-28 rounded-md border bg-card shadow-sm overflow-hidden cursor-pointer hover:ring-1 hover:ring-primary/40 transition-shadow"
+                onClick={() => setSelectedProduct(p)}
+              >
+                <div className="h-20 bg-muted flex items-center justify-center">
+                  {p.image ? (
+                    <img
+                      src={p.image}
+                      alt={p.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-muted-foreground text-[9px]">No image</span>
+                  )}
+                </div>
 
-              <div className="p-1.5">
-                <h4 className="font-medium text-[10px] leading-tight line-clamp-1">{p.name}</h4>
-                <div className="flex items-center justify-between mt-1">
-                  <span className="text-[11px] font-bold">
-                    {p.type === "course" ? `${p.credits} cr` : `$${p.price.toFixed(2)}`}
-                  </span>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onAddToCart?.(p.id); }}
-                    disabled={(p.type !== "course" && p.stock === 0) || !onAddToCart}
-                    className="h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    aria-label={p.type === "course" ? `Enroll in ${p.name}` : `Add ${p.name} to cart`}
-                  >
-                    <Plus className="h-3 w-3" />
-                  </button>
+                <div className="p-1.5">
+                  <h4 className="font-medium text-[10px] leading-tight line-clamp-1">{p.name}</h4>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-[11px] font-bold">
+                      {p.type === "course" ? `${p.credits} cr` : showPrice ? `$${p.price.toFixed(2)}` : "Included"}
+                    </span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onAddToCart?.(p.id); }}
+                      disabled={(p.type !== "course" && showStock && p.stock === 0) || !onAddToCart}
+                      className="h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      aria-label={p.type === "course" ? `Enroll in ${p.name}` : `Add ${p.name} to cart`}
+                    >
+                      <Plus className="h-3 w-3" />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

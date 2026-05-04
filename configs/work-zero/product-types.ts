@@ -10,6 +10,7 @@ export const productTypes: ProductTypeConfig = {
       verbPastTense: "Enrolled",
       priceLabel: "Tuition",
       showPrice: true,
+      showStock: false,
       additionalFields: ["duration", "format", "provider", "credential"],
       categories: [
         "Certificates",
@@ -31,6 +32,7 @@ export const productTypes: ProductTypeConfig = {
       verbPastTense: "Started",
       priceLabel: "Included",
       showPrice: false,
+      showStock: false,
       additionalFields: ["targetRole", "programCount", "timeline"],
       categories: [
         "Healthcare",

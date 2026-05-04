@@ -1,7 +1,15 @@
 import Link from "next/link";
 import type { Product } from "@/lib/data/products";
+import { getProductTypes } from "@/lib/config";
 
 export function ProductCard({ product }: { product: Product }) {
+  const productTypes = getProductTypes();
+  const productType = productTypes.types.find(
+    (t) => t.type === product.type
+  );
+  const showStock = productType?.showStock !== false;
+  const showPrice = productType?.showPrice !== false;
+
   return (
     <Link href={`/products/${product.id}`} className="group">
       <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden transition-shadow hover:shadow-md">
@@ -25,10 +33,16 @@ export function ProductCard({ product }: { product: Product }) {
             {product.description}
           </p>
           <div className="mt-3 flex items-center justify-between">
-            <span className="text-lg font-bold">${product.price.toFixed(2)}</span>
-            <span className="text-xs text-muted-foreground">
-              {product.stock > 0 ? `${product.stock} in stock` : "Out of stock"}
-            </span>
+            {showPrice ? (
+              <span className="text-lg font-bold">${product.price.toFixed(2)}</span>
+            ) : (
+              <span className="text-sm text-muted-foreground">{productType?.priceLabel || "Included"}</span>
+            )}
+            {showStock && product.stock !== undefined && (
+              <span className="text-xs text-muted-foreground">
+                {product.stock > 0 ? `${product.stock} in stock` : "Out of stock"}
+              </span>
+            )}
           </div>
         </div>
       </div>

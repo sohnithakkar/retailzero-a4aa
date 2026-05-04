@@ -9,8 +9,8 @@ export const branding: BrandingConfig = {
   assistantName: "Zero",
   tagline: "AI-powered career development platform",
   description: "AI-powered education benefits platform connecting employees with career growth opportunities",
-  primaryColor: "#1E3A5F",
-  primaryColorHSL: "211 52% 25%",
-  gradientFrom: "#e8f4f8",
+  primaryColor: "#E7651C",
+  primaryColorHSL: "22 79% 51%",
+  gradientFrom: "#fef3eb",
   logoIcon: "Building2",
 };

@@ -1,15 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-
-type UserRole = "student" | "admin";
-type GradeLevel = "K" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10" | "11" | "12";
+import { getRoles } from "@/lib/config";
 
 interface ProfileData {
   name: string;
   email: string;
-  role: UserRole;
-  gradeLevel?: GradeLevel;
+  role: string;
+  gradeLevel?: string;
   address: {
     street: string;
     city: string;
@@ -21,8 +19,6 @@ interface ProfileData {
     theme: "light" | "dark";
   };
 }
-
-const GRADE_LEVELS: GradeLevel[] = ["K", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
 
 interface ProfileFormProps {
   initialData: ProfileData;
@@ -39,6 +35,10 @@ export function ProfileForm({ initialData, onSave }: ProfileFormProps) {
   const [form, setForm] = useState(initialData);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+
+  const rolesConfig = getRoles();
+  const gradeLevels = rolesConfig.gradeLevels || [];
+  const hasGradeLevels = gradeLevels.length > 0;
 
   const [googleStatus, setGoogleStatus] = useState<GoogleConnectionStatus | null>(null);
   const [googleLoading, setGoogleLoading] = useState(true);
@@ -119,32 +119,35 @@ export function ProfileForm({ initialData, onSave }: ProfileFormProps) {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className={hasGradeLevels ? "grid grid-cols-2 gap-4" : ""}>
         <div>
           <label className="text-sm font-medium">Role</label>
           <select
             value={form.role}
             onChange={(e) =>
-              setForm({ ...form, role: e.target.value as UserRole })
+              setForm({ ...form, role: e.target.value })
             }
             className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           >
-            <option value="student">Student</option>
-            <option value="admin">Administrator</option>
+            {rolesConfig.roles.map((role) => (
+              <option key={role.name} value={role.name}>
+                {role.label}
+              </option>
+            ))}
           </select>
         </div>
 
-        {form.role === "student" && (
+        {hasGradeLevels && form.role === rolesConfig.roles.find(r => r.name !== "admin")?.name && (
           <div>
             <label className="text-sm font-medium">Grade Level</label>
             <select
-              value={form.gradeLevel || "8"}
+              value={form.gradeLevel || gradeLevels[Math.floor(gradeLevels.length / 2)]}
               onChange={(e) =>
-                setForm({ ...form, gradeLevel: e.target.value as GradeLevel })
+                setForm({ ...form, gradeLevel: e.target.value })
               }
               className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             >
-              {GRADE_LEVELS.map((grade) => (
+              {gradeLevels.map((grade) => (
                 <option key={grade} value={grade}>
                   {grade === "K" ? "Kindergarten" : `Grade ${grade}`}
                 </option>
